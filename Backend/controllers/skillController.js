@@ -68,7 +68,7 @@ exports.updateSkill = async (req, res) => {
     const skill = await Skill.findOneAndUpdate(
       { _id: id, userId: req.user._id },
       updateData,
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
 
     if (!skill) {
