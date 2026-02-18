@@ -18,6 +18,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/skills", require("./routes/skillRoutes"));
+app.use("/api/tasks", require("./routes/taskRoutes"));
 app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/suggestions", require("./routes/suggestionRoutes"));
 app.use("/api/motivation", require("./routes/motivationRoutes"));
