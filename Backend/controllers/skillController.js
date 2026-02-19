@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Skill = require("../models/Skill");
 const ReadinessScore = require("../models/ReadinessScore");
+const SkillHistory = require("../models/SkillHistory");
 const { calculateAndUpsertReadiness } = require("../services/readinessService");
 
 // POST /api/skills
@@ -65,14 +66,32 @@ exports.updateSkill = async (req, res) => {
       return res.status(400).json({ message: "No valid fields provided for update" });
     }
 
+    const existingSkill = await Skill.findOne({ _id: id, userId: req.user._id }).select(
+      "confidenceScore"
+    );
+
+    if (!existingSkill) {
+      return res.status(404).json({ message: "Skill not found" });
+    }
+
+    const oldConfidence = Number(existingSkill.confidenceScore);
+    const hasConfidenceUpdate = updateData.confidenceScore !== undefined;
+    const newConfidence = hasConfidenceUpdate ? Number(updateData.confidenceScore) : oldConfidence;
+
     const skill = await Skill.findOneAndUpdate(
       { _id: id, userId: req.user._id },
       updateData,
       { returnDocument: "after", runValidators: true }
     );
 
-    if (!skill) {
-      return res.status(404).json({ message: "Skill not found" });
+    if (hasConfidenceUpdate && oldConfidence !== newConfidence) {
+      await SkillHistory.create({
+        userId: req.user._id,
+        skillId: skill._id,
+        oldConfidence,
+        newConfidence,
+        changeDate: new Date()
+      });
     }
 
     const readiness = await calculateAndUpsertReadiness(req.user._id);
