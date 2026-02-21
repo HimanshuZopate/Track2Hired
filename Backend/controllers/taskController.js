@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Task = require("../models/Task");
+const { recordUserActivity } = require("../services/streakService");
 
 const VALID_STATUS = ["Pending", "In Progress", "Completed"];
 const VALID_SORT_FIELDS = ["dueDate", "priority"];
@@ -167,14 +168,20 @@ exports.updateTask = async (req, res) => {
       return res.status(400).json({ message: "No valid fields provided for update" });
     }
 
+    const previousTask = await Task.findOne({ _id: id, userId: req.user._id }).select("status");
+
+    if (!previousTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
     const task = await Task.findOneAndUpdate(
       { _id: id, userId: req.user._id },
       updateData,
       { returnDocument: "after", runValidators: true }
     );
 
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+    if (previousTask.status !== "Completed" && task.status === "Completed") {
+      await recordUserActivity(req.user._id, "TaskComplete", task._id);
     }
 
     return res.json({ task });
@@ -213,14 +220,20 @@ exports.markTaskCompleted = async (req, res) => {
       return res.status(400).json({ message: "Invalid task id" });
     }
 
+    const existingTask = await Task.findOne({ _id: id, userId: req.user._id }).select("status");
+
+    if (!existingTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
     const task = await Task.findOneAndUpdate(
       { _id: id, userId: req.user._id },
       { status: "Completed" },
       { returnDocument: "after", runValidators: true }
     );
 
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+    if (existingTask.status !== "Completed") {
+      await recordUserActivity(req.user._id, "TaskComplete", task._id);
     }
 
     return res.json({ task });

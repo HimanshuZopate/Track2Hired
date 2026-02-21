@@ -3,6 +3,7 @@ const Skill = require("../models/Skill");
 const ReadinessScore = require("../models/ReadinessScore");
 const SkillHistory = require("../models/SkillHistory");
 const { calculateAndUpsertReadiness } = require("../services/readinessService");
+const { recordUserActivity } = require("../services/streakService");
 
 // POST /api/skills
 exports.addSkill = async (req, res) => {
@@ -95,6 +96,8 @@ exports.updateSkill = async (req, res) => {
     }
 
     const readiness = await calculateAndUpsertReadiness(req.user._id);
+
+    await recordUserActivity(req.user._id, "SkillUpdate", skill._id);
 
     return res.json({ skill, readiness });
   } catch (error) {

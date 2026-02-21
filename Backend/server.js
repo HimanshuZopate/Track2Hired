@@ -23,6 +23,7 @@ app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/suggestions", require("./routes/suggestionRoutes"));
 app.use("/api/motivation", require("./routes/motivationRoutes"));
 app.use("/api/analytics", require("./routes/analyticsRoutes"));
+app.use("/api/streak", require("./routes/streakRoutes"));
 
 const PORT = process.env.PORT || 5000;
 const connectDB = require("./config/db");

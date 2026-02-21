@@ -1,6 +1,7 @@
 const GeneratedQuestion = require("../models/GeneratedQuestion");
 const QuestionAttempt = require("../models/QuestionAttempt");
 const { generateQuestions, ALLOWED_DIFFICULTIES, ALLOWED_TYPES } = require("../services/aiService");
+const { recordUserActivity } = require("../services/streakService");
 
 // POST /api/ai/generate
 exports.generateAiQuestions = async (req, res) => {
@@ -43,6 +44,8 @@ exports.generateAiQuestions = async (req, res) => {
       questions: result.questions
     });
 
+    await recordUserActivity(req.user._id, "AIPractice", generated._id);
+
     return res.status(201).json({
       message: result.usedFallback
         ? "Questions generated using fallback due to AI provider issue"
@@ -84,6 +87,8 @@ exports.recordQuestionAttempt = async (req, res) => {
         returnDocument: "after"
       }
     );
+
+    await recordUserActivity(req.user._id, "QuestionAttempt", attempt._id);
 
     return res.status(201).json({ message: "Attempt recorded", attempt });
   } catch (error) {
