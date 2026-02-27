@@ -26,6 +26,11 @@ app.use("/api/analytics", require("./routes/analyticsRoutes"));
 app.use("/api/streak", require("./routes/streakRoutes"));
 app.use("/api/resume", require("./routes/resumeRoutes"));
 
+// Future recruiter module wiring (feature-flagged; disabled by default).
+if (String(process.env.ENABLE_RECRUITER_MODULE || "false").toLowerCase() === "true") {
+  app.use("/api/recruiter", require("./routes/recruiterRoutes"));
+}
+
 const PORT = process.env.PORT || 5000;
 const connectDB = require("./config/db");
 connectDB();

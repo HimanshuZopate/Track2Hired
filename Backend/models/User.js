@@ -16,6 +16,12 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true
+    },
+    // Future-proof role support. Current active users remain "student".
+    role: {
+      type: String,
+      enum: ["student", "recruiter", "admin"],
+      default: "student"
     }
   },
   {
