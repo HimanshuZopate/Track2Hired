@@ -4,6 +4,7 @@ const ReadinessScore = require("../models/ReadinessScore");
 const SkillHistory = require("../models/SkillHistory");
 const { calculateAndUpsertReadiness } = require("../services/readinessService");
 const { recordUserActivity } = require("../services/streakService");
+const INTERNAL_SERVER_ERROR = "Internal server error";
 
 // POST /api/skills
 exports.addSkill = async (req, res) => {
@@ -29,7 +30,7 @@ exports.addSkill = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({ message: "Skill already exists for this user" });
     }
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -41,7 +42,7 @@ exports.getUserSkills = async (req, res) => {
 
     return res.json({ skills, readiness });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -104,7 +105,7 @@ exports.updateSkill = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({ message: "Skill already exists for this user" });
     }
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -127,6 +128,6 @@ exports.deleteSkill = async (req, res) => {
 
     return res.json({ message: "Skill deleted successfully", readiness });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };

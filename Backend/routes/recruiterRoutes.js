@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const protect = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/authMiddleware");
+const validateRequest = require("../middleware/validateRequest");
+const { recruiterRegisterValidator, recruiterLoginValidator } = require("../middleware/validators");
 const {
   registerRecruiter,
   loginRecruiter,
@@ -19,8 +21,8 @@ const {
  * - Even when mounted, controller-level feature guard keeps them safely disabled by default.
  */
 
-router.post("/register", registerRecruiter);
-router.post("/login", loginRecruiter);
+router.post("/register", recruiterRegisterValidator, validateRequest, registerRecruiter);
+router.post("/login", recruiterLoginValidator, validateRequest, loginRecruiter);
 
 router.use(protect);
 router.use(authorizeRoles("recruiter", "admin"));

@@ -2,6 +2,7 @@ const GeneratedQuestion = require("../models/GeneratedQuestion");
 const QuestionAttempt = require("../models/QuestionAttempt");
 const { generateQuestions, ALLOWED_DIFFICULTIES, ALLOWED_TYPES } = require("../services/aiService");
 const { recordUserActivity } = require("../services/streakService");
+const INTERNAL_SERVER_ERROR = "Internal server error";
 
 // POST /api/ai/generate
 exports.generateAiQuestions = async (req, res) => {
@@ -57,7 +58,7 @@ exports.generateAiQuestions = async (req, res) => {
       questions: result.questions
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -92,7 +93,7 @@ exports.recordQuestionAttempt = async (req, res) => {
 
     return res.status(201).json({ message: "Attempt recorded", attempt });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -105,6 +106,6 @@ exports.getGeneratedHistory = async (req, res) => {
 
     return res.json({ history });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };

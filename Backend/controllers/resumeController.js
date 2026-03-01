@@ -15,6 +15,8 @@ const {
   generateSuggestions
 } = require("../services/atsAnalyzerService");
 
+const INTERNAL_SERVER_ERROR = "Internal server error";
+
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(String(id || ""));
 
 const handleError = (res, error) => {
@@ -26,7 +28,7 @@ const handleError = (res, error) => {
     return res.status(400).json({ message: "Invalid request data" });
   }
 
-  return res.status(500).json({ message: error.message || "Internal server error" });
+  return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
 };
 
 const normalizeProfilePayload = (body = {}) => {

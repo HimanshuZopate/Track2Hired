@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
+const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
+const { migrateLegacyReadinessScale } = require("./services/readinessService");
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
@@ -31,9 +33,31 @@ if (String(process.env.ENABLE_RECRUITER_MODULE || "false").toLowerCase() === "tr
   app.use("/api/recruiter", require("./routes/recruiterRoutes"));
 }
 
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 5000;
 const connectDB = require("./config/db");
-connectDB();
+connectDB()
+  .then(async () => {
+    await migrateLegacyReadinessScale();
+  })
+  .catch((error) => {
+    // eslint-disable-next-line no-console
+    console.error("Startup initialization failed:", error.message);
+    process.exit(1);
+  });
+
+process.on("unhandledRejection", (reason) => {
+  // eslint-disable-next-line no-console
+  console.error("Unhandled Rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  // eslint-disable-next-line no-console
+  console.error("Uncaught Exception:", error);
+  process.exit(1);
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

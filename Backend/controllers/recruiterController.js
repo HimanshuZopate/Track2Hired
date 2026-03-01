@@ -9,6 +9,8 @@ const {
   shortlistCandidate
 } = require("../services/recruiterService");
 
+const INTERNAL_SERVER_ERROR = "Internal server error";
+
 const recruiterFeatureGuard = (res) => {
   const isEnabled = String(process.env.ENABLE_RECRUITER_MODULE || "false").toLowerCase() === "true";
   if (!isEnabled) {
@@ -65,7 +67,7 @@ exports.registerRecruiter = async (req, res) => {
       token: createRecruiterToken(recruiter)
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -81,12 +83,12 @@ exports.loginRecruiter = async (req, res) => {
 
     const recruiter = await Recruiter.findOne({ email: String(email).toLowerCase() });
     if (!recruiter) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, recruiter.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     return res.json({
@@ -97,7 +99,7 @@ exports.loginRecruiter = async (req, res) => {
       token: createRecruiterToken(recruiter)
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -136,7 +138,7 @@ exports.createJobPosting = async (req, res) => {
 
     return res.status(201).json({ job });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -156,7 +158,7 @@ exports.getCandidates = async (req, res) => {
     const candidates = await filterCandidates(criteria);
     return res.json({ candidates });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -168,7 +170,7 @@ exports.generateSnapshot = async (req, res) => {
     const snapshot = await generateCandidateSnapshot(req.params.userId);
     return res.status(201).json({ snapshot });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -180,7 +182,7 @@ exports.getCandidateMatches = async (req, res) => {
     const matches = await calculateCandidateMatch(req.params.jobId);
     return res.json({ matches });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -197,6 +199,6 @@ exports.shortlist = async (req, res) => {
     const entry = await shortlistCandidate({ recruiterId, jobId, candidateId, status, notes });
     return res.status(201).json({ shortlist: entry });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };

@@ -2,6 +2,7 @@ const path = require("path");
 const DailySuggestion = require("../models/DailySuggestion");
 const ReadinessScore = require("../models/ReadinessScore");
 const { buildSuggestion, getStartAndEndOfTodayUTC } = require("../services/suggestionService");
+const INTERNAL_SERVER_ERROR = "Internal server error";
 
 const quotes = require(path.join(__dirname, "..", "data", "quotes.json"));
 
@@ -34,7 +35,7 @@ exports.getTodaySuggestion = async (req, res) => {
 
     return res.json({ suggestion });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -42,7 +43,7 @@ exports.getTodaySuggestion = async (req, res) => {
 exports.getMotivation = async (req, res) => {
   try {
     const readiness = await ReadinessScore.findOne({ userId: req.user._id }).select("overallScore");
-    const readinessPercent = readiness ? Math.round((readiness.overallScore / 5) * 100) : 0;
+    const readinessPercent = readiness ? Math.round(readiness.overallScore) : 0;
 
     let quote = randomFrom(quotes);
     let type = "random";
@@ -61,6 +62,6 @@ exports.getMotivation = async (req, res) => {
       readinessPercent
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };

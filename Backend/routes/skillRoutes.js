@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const protect = require("../middleware/authMiddleware");
+const validateRequest = require("../middleware/validateRequest");
+const { skillCreateValidator, skillUpdateValidator } = require("../middleware/validators");
 const {
   addSkill,
   getUserSkills,
@@ -10,7 +12,7 @@ const {
 
 router.use(protect);
 
-router.route("/").post(addSkill).get(getUserSkills);
-router.route("/:id").put(updateSkill).delete(deleteSkill);
+router.route("/").post(skillCreateValidator, validateRequest, addSkill).get(getUserSkills);
+router.route("/:id").put(skillUpdateValidator, validateRequest, updateSkill).delete(deleteSkill);
 
 module.exports = router;

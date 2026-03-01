@@ -6,6 +6,7 @@ const {
   generatePerformanceSummary,
   getPerformanceTrends
 } = require("../services/analyticsService");
+const INTERNAL_SERVER_ERROR = "Internal server error";
 
 // GET /api/analytics/summary
 exports.getPerformanceSummary = async (req, res) => {
@@ -16,7 +17,7 @@ exports.getPerformanceSummary = async (req, res) => {
       summary
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -37,7 +38,7 @@ exports.getPerformanceTrends = async (req, res) => {
       }
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -56,6 +57,6 @@ exports.getWeakAreas = async (req, res) => {
       }
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };

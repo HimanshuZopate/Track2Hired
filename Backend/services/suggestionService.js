@@ -29,7 +29,7 @@ const buildSuggestion = async ({ userId, companyFocus }) => {
   const readiness = await ReadinessScore.findOne({ userId }).select("overallScore");
   const recentFailures = await getRecentFailuresCount(userId);
 
-  const readinessPercent = readiness ? Math.round((readiness.overallScore / 5) * 100) : 0;
+  const readinessPercent = readiness ? Math.round(readiness.overallScore) : 0;
 
   if (companyFocus && String(companyFocus).trim()) {
     return {

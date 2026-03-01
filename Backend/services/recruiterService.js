@@ -18,6 +18,11 @@ const toObjectId = (id) => {
 
 const normalizeSkill = (value = "") => String(value).trim().toLowerCase();
 
+const toNumberOrDefault = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const generateCandidateSnapshot = async (userId) => {
   const candidateId = toObjectId(userId);
 
@@ -107,65 +112,172 @@ const calculateCandidateMatch = async (jobId) => {
   }
 
   const requiredSkills = (job.requiredSkills || []).map(normalizeSkill).filter(Boolean);
-  const users = await User.find({ role: "student" }).select("_id name email").lean();
+  const requiredSkillsCount = requiredSkills.length;
 
-  const matches = [];
+  const minReadinessScore = toNumberOrDefault(job.minReadinessScore, 0);
+  const minATSScore = toNumberOrDefault(job.minATSScore, 0);
+  const minStreakDays = toNumberOrDefault(job.minStreakDays, 0);
 
-  for (const user of users) {
-    const [readiness, resume, streak, skills] = await Promise.all([
-      ReadinessScore.findOne({ userId: user._id }).lean(),
-      ResumeDocument.findOne({ userId: user._id }).sort({ createdAt: -1 }).lean(),
-      UserStreak.findOne({ userId: user._id }).lean(),
-      Skill.find({ userId: user._id }).lean()
-    ]);
-
-    const candidateSkillSet = new Set(skills.map((skill) => normalizeSkill(skill.skillName)).filter(Boolean));
-    const matchedSkills = requiredSkills.filter((required) => candidateSkillSet.has(required));
-    const skillMatchPercentage = requiredSkills.length
-      ? Math.round((matchedSkills.length / requiredSkills.length) * 100)
-      : 100;
-
-    const readinessScore = Number(readiness?.overallScore || 0);
-    const atsScore = Number(resume?.atsScore || 0);
-    const streakScore = Number(streak?.currentStreak || 0);
-
-    const passedThresholds =
-      readinessScore >= Number(job.minReadinessScore || 0) &&
-      atsScore >= Number(job.minATSScore || 0) &&
-      streakScore >= Number(job.minStreakDays || 0);
-
-    await CandidateEvaluation.findOneAndUpdate(
-      { userId: user._id },
-      {
-        $set: {
-          readinessScore,
-          atsScore,
-          skillMatchPercentage,
-          streakScore,
-          lastActive: streak?.lastActiveDate || null,
-          generatedAt: new Date()
+  const candidates = await User.aggregate([
+    { $match: { role: "student" } },
+    {
+      $lookup: {
+        from: "readinessscores",
+        localField: "_id",
+        foreignField: "userId",
+        as: "readiness"
+      }
+    },
+    {
+      $lookup: {
+        from: "resumedocuments",
+        let: { uid: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$userId", "$$uid"] } } },
+          { $sort: { createdAt: -1 } },
+          { $limit: 1 },
+          { $project: { atsScore: 1 } }
+        ],
+        as: "latestResume"
+      }
+    },
+    {
+      $lookup: {
+        from: "userstreaks",
+        localField: "_id",
+        foreignField: "userId",
+        as: "streak"
+      }
+    },
+    {
+      $lookup: {
+        from: "skills",
+        localField: "_id",
+        foreignField: "userId",
+        as: "skills"
+      }
+    },
+    {
+      $addFields: {
+        readinessScore: {
+          $ifNull: [{ $arrayElemAt: ["$readiness.overallScore", 0] }, 0]
+        },
+        atsScore: {
+          $ifNull: [{ $arrayElemAt: ["$latestResume.atsScore", 0] }, 0]
+        },
+        streakScore: {
+          $ifNull: [{ $arrayElemAt: ["$streak.currentStreak", 0] }, 0]
+        },
+        lastActive: {
+          $ifNull: [{ $arrayElemAt: ["$streak.lastActiveDate", 0] }, null]
+        },
+        normalizedSkills: {
+          $map: {
+            input: "$skills",
+            as: "skill",
+            in: { $toLower: "$$skill.skillName" }
+          }
         }
-      },
-      { upsert: true, setDefaultsOnInsert: true }
-    );
-
-    if (passedThresholds) {
-      matches.push({
-        user,
-        readinessScore,
-        atsScore,
-        streakScore,
-        skillMatchPercentage,
-        matchedSkills
-      });
+      }
+    },
+    {
+      $addFields: {
+        matchedSkills: {
+          $cond: [
+            { $gt: [requiredSkillsCount, 0] },
+            { $setIntersection: ["$normalizedSkills", requiredSkills] },
+            []
+          ]
+        },
+        skillMatchPercentage: {
+          $cond: [
+            { $gt: [requiredSkillsCount, 0] },
+            {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        {
+                          $size: {
+                            $setIntersection: ["$normalizedSkills", requiredSkills]
+                          }
+                        },
+                        requiredSkillsCount
+                      ]
+                    },
+                    100
+                  ]
+                },
+                0
+              ]
+            },
+            100
+          ]
+        }
+      }
+    },
+    {
+      $match: {
+        readinessScore: { $gte: minReadinessScore },
+        atsScore: { $gte: minATSScore },
+        streakScore: { $gte: minStreakDays }
+      }
+    },
+    {
+      $addFields: {
+        rankingScore: {
+          $add: [
+            { $multiply: ["$skillMatchPercentage", 0.4] },
+            { $multiply: ["$readinessScore", 0.3] },
+            { $multiply: ["$atsScore", 0.2] },
+            { $multiply: ["$streakScore", 0.1] }
+          ]
+        }
+      }
+    },
+    { $sort: { rankingScore: -1 } },
+    {
+      $project: {
+        _id: 0,
+        user: {
+          _id: "$_id",
+          name: "$name",
+          email: "$email"
+        },
+        readinessScore: 1,
+        atsScore: 1,
+        streakScore: 1,
+        skillMatchPercentage: 1,
+        matchedSkills: 1,
+        lastActive: 1
+      }
     }
+  ]);
+
+  if (candidates.length) {
+    const now = new Date();
+    await CandidateEvaluation.bulkWrite(
+      candidates.map((candidate) => ({
+        updateOne: {
+          filter: { userId: candidate.user._id },
+          update: {
+            $set: {
+              readinessScore: candidate.readinessScore,
+              atsScore: candidate.atsScore,
+              skillMatchPercentage: candidate.skillMatchPercentage,
+              streakScore: candidate.streakScore,
+              lastActive: candidate.lastActive,
+              generatedAt: now
+            }
+          },
+          upsert: true
+        }
+      }))
+    );
   }
 
-  return matches.sort((a, b) => {
-    const scoreA = a.skillMatchPercentage * 0.4 + a.readinessScore * 0.3 + a.atsScore * 0.2 + a.streakScore * 0.1;
-    const scoreB = b.skillMatchPercentage * 0.4 + b.readinessScore * 0.3 + b.atsScore * 0.2 + b.streakScore * 0.1;
-    return scoreB - scoreA;
-  });
+  return candidates;
 };
 
 const shortlistCandidate = async ({ recruiterId, jobId, candidateId, status = "Shortlisted", notes = "" }) => {

@@ -18,10 +18,14 @@ const calculateAndUpsertReadiness = async (userId) => {
     .filter((s) => s.category === "HR")
     .map((s) => s.confidenceScore);
 
-  const technicalScore = average(technicalScores);
-  const hrScore = average(hrScores);
+  const technicalAvg = average(technicalScores);
+  const hrAvg = average(hrScores);
 
-  // Weighted overall score: 70% technical + 30% HR
+  // Convert 1-5 confidence averages to percentage scale (0-100).
+  const technicalScore = Number(((technicalAvg / 5) * 100).toFixed(2));
+  const hrScore = Number(((hrAvg / 5) * 100).toFixed(2));
+
+  // Weighted overall score: 70% technical + 30% HR (percentage scale)
   const overallScore = Number((technicalScore * 0.7 + hrScore * 0.3).toFixed(2));
 
   const readiness = await ReadinessScore.findOneAndUpdate(
@@ -39,6 +43,37 @@ const calculateAndUpsertReadiness = async (userId) => {
   return readiness;
 };
 
+const migrateLegacyReadinessScale = async () => {
+  await ReadinessScore.updateMany(
+    { overallScore: { $gt: 0, $lte: 5 } },
+    [
+      {
+        $set: {
+          technicalScore: {
+            $cond: [
+              { $and: [{ $gt: ["$technicalScore", 0] }, { $lte: ["$technicalScore", 5] }] },
+              { $round: [{ $multiply: ["$technicalScore", 20] }, 2] },
+              "$technicalScore"
+            ]
+          },
+          hrScore: {
+            $cond: [
+              { $and: [{ $gt: ["$hrScore", 0] }, { $lte: ["$hrScore", 5] }] },
+              { $round: [{ $multiply: ["$hrScore", 20] }, 2] },
+              "$hrScore"
+            ]
+          },
+          overallScore: {
+            $round: [{ $multiply: ["$overallScore", 20] }, 2]
+          },
+          lastUpdated: new Date()
+        }
+      }
+    ]
+  );
+};
+
 module.exports = {
-  calculateAndUpsertReadiness
+  calculateAndUpsertReadiness,
+  migrateLegacyReadinessScale
 };

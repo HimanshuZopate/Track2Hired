@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Task = require("../models/Task");
 const { recordUserActivity } = require("../services/streakService");
+const INTERNAL_SERVER_ERROR = "Internal server error";
 
 const VALID_STATUS = ["Pending", "In Progress", "Completed"];
 const VALID_SORT_FIELDS = ["dueDate", "priority"];
@@ -14,7 +15,7 @@ const handleTaskError = (res, error) => {
     return res.status(400).json({ message: "Invalid request data" });
   }
 
-  return res.status(500).json({ message: error.message });
+  return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
 };
 
 const parsePagination = (page, limit) => {

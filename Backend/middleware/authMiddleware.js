@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const Recruiter = require("../models/Recruiter");
 
 const protect = async (req, res, next) => {
   let token;
@@ -18,15 +19,18 @@ const protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = await User.findById(decoded.id).select("-password");
+    // Backward compatibility: older tokens may not include role.
+    // Default to student role for legacy student tokens.
+    const resolvedRole = decoded.role || "student";
+    const model = resolvedRole === "recruiter" ? Recruiter : User;
+
+    req.user = await model.findById(decoded.id).select("-password");
 
     if (!req.user) {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // Future-ready role support (student/recruiter/admin).
-    // For now, active flows use student users, so role defaults safely.
-    req.userRole = decoded.role || req.user.role || "student";
+    req.userRole = req.user.role || resolvedRole || "student";
 
     next();
   } catch (error) {
