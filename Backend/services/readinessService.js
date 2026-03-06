@@ -69,7 +69,8 @@ const migrateLegacyReadinessScale = async () => {
           lastUpdated: new Date()
         }
       }
-    ]
+    ],
+    { updatePipeline: true }
   );
 };
 

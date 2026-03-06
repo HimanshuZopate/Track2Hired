@@ -46,7 +46,6 @@ const recruiterSchema = new mongoose.Schema(
   }
 );
 
-recruiterSchema.index({ email: 1 }, { unique: true });
 recruiterSchema.index({ companyName: 1, createdAt: -1 });
 
 recruiterSchema.pre("save", async function (next) {
