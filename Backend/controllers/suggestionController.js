@@ -11,27 +11,33 @@ const randomFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 // GET /api/suggestions/today
 exports.getTodaySuggestion = async (req, res) => {
   try {
-    const { start, end } = getStartAndEndOfTodayUTC();
+    const { start } = getStartAndEndOfTodayUTC();
 
-    let suggestion = await DailySuggestion.findOne({
+    const generated = await buildSuggestion({
       userId: req.user._id,
-      date: { $gte: start, $lt: end }
+      companyFocus: req.query.companyFocus
     });
 
-    if (!suggestion) {
-      const generated = await buildSuggestion({
+    const suggestion = await DailySuggestion.findOneAndUpdate(
+      {
         userId: req.user._id,
-        companyFocus: req.query.companyFocus
-      });
-
-      suggestion = await DailySuggestion.create({
-        userId: req.user._id,
-        date: start,
-        suggestionText: generated.suggestionText,
-        type: generated.type,
-        generatedFrom: generated.generatedFrom
-      });
-    }
+        date: start
+      },
+      {
+        $set: {
+          userId: req.user._id,
+          date: start,
+          suggestionText: generated.suggestionText,
+          type: generated.type,
+          generatedFrom: generated.generatedFrom
+        }
+      },
+      {
+        upsert: true,
+        returnDocument: "after",
+        setDefaultsOnInsert: true
+      }
+    );
 
     return res.json({ suggestion });
   } catch (error) {

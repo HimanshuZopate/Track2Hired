@@ -33,7 +33,10 @@ const calculateImprovementRate = async (userId) => {
 };
 
 const detectWeakSkills = async (userId) => {
-  const weakSkills = await Skill.find({ userId })
+  const weakSkills = await Skill.find({
+    userId,
+    confidenceScore: { $lt: 3 }
+  })
     .sort({ confidenceScore: 1, updatedAt: -1 })
     .limit(3)
     .select("skillName -_id");

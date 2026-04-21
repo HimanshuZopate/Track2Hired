@@ -10,10 +10,22 @@ const levelColors = {
 
 const labels = { 1: 'Very Low', 2: 'Low', 3: 'Moderate', 4: 'High', 5: 'Expert' }
 
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+
+const getBand = (score) => {
+  if (score >= 4.5) return 5
+  if (score >= 3.5) return 4
+  if (score >= 2.5) return 3
+  if (score >= 1.5) return 2
+  return 1
+}
+
 function ConfidenceBar({ score = 1, animate = true }) {
-  const clamped = Math.min(Math.max(Math.round(score), 1), 5)
-  const percent = (clamped / 5) * 100
-  const theme = levelColors[clamped]
+  const rawScore = clamp(Number(score || 1), 1, 5)
+  const displayScore = rawScore.toFixed(1)
+  const percent = (rawScore / 5) * 100
+  const band = getBand(rawScore)
+  const theme = levelColors[band]
 
   return (
     <div className="w-full">
@@ -22,7 +34,7 @@ function ConfidenceBar({ score = 1, animate = true }) {
           Confidence
         </span>
         <span className="text-[11px] font-semibold" style={{ color: theme.label }}>
-          {clamped}/5 · {labels[clamped]}
+          {displayScore}/5 · {labels[band]}
         </span>
       </div>
 
@@ -44,8 +56,13 @@ function ConfidenceBar({ score = 1, animate = true }) {
             key={pip}
             className="h-1 flex-1 rounded-full transition-all duration-300"
             style={{
-              background: pip <= clamped ? theme.label : 'rgba(255,255,255,0.12)',
-              boxShadow: pip <= clamped ? `0 0 5px ${theme.glow}` : 'none',
+              background:
+                rawScore >= pip
+                  ? theme.label
+                  : rawScore > pip - 1
+                    ? `linear-gradient(90deg, ${theme.label} ${Math.round((rawScore - (pip - 1)) * 100)}%, rgba(255,255,255,0.12) ${Math.round((rawScore - (pip - 1)) * 100)}%)`
+                    : 'rgba(255,255,255,0.12)',
+              boxShadow: rawScore > pip - 1 ? `0 0 5px ${theme.glow}` : 'none',
             }}
           />
         ))}
