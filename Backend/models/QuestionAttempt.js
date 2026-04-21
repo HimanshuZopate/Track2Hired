@@ -13,6 +13,12 @@ const questionAttemptSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    topicId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Topic",
+      default: null,
+      index: true
+    },
     userAnswer: {
       type: String,
       required: true,
@@ -21,6 +27,17 @@ const questionAttemptSchema = new mongoose.Schema(
     isCorrect: {
       type: Boolean,
       required: true
+    },
+    score: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: null
+    },
+    difficulty: {
+      type: String,
+      enum: ["Easy", "Medium", "Hard", "Beginner", "Intermediate", "Advanced"],
+      default: null
     },
     attemptCount: {
       type: Number,

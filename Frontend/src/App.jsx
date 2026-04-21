@@ -1,8 +1,18 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import AIPractice from './pages/AIPractice'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import Skills from './pages/Skills'
+import Tasks from './pages/Tasks'
 import { getAuthToken } from './services/api'
+
+import Practice from './pages/Practice'
+
+function HomeRoute() {
+  const token = getAuthToken()
+  return <Navigate to={token ? '/dashboard' : '/login'} replace />
+}
 
 function ProtectedRoute({ children }) {
   const token = getAuthToken()
@@ -26,6 +36,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<HomeRoute />} />
         <Route
           path="/login"
           element={
@@ -55,7 +66,7 @@ function App() {
           path="/skills"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Skills />
             </ProtectedRoute>
           }
         />
@@ -63,7 +74,7 @@ function App() {
           path="/tasks"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Tasks />
             </ProtectedRoute>
           }
         />
@@ -71,7 +82,15 @@ function App() {
           path="/ai-practice"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <AIPractice />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/practice"
+          element={
+            <ProtectedRoute>
+              <Practice />
             </ProtectedRoute>
           }
         />
@@ -107,7 +126,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )

@@ -31,6 +31,7 @@ exports.generateAiQuestions = async (req, res) => {
       : 5;
 
     const result = await generateQuestions({
+      userId: req.user?._id,
       skill,
       difficulty,
       type,
@@ -47,17 +48,42 @@ exports.generateAiQuestions = async (req, res) => {
 
     await recordUserActivity(req.user._id, "AIPractice", generated._id);
 
+    if (result.usedFallback) {
+      return res.status(200).json({
+        success: false,
+        error: "AI generation failed",
+        message: "AI service temporarily busy. Showing fallback questions.",
+        fallbackUsed: true,
+        provider: result.provider,
+        usedFallback: true,
+        providerError: result.error || null,
+        generatedId: generated._id,
+        questions: result.questions
+      });
+    }
+
     return res.status(201).json({
-      message: result.usedFallback
-        ? "Questions generated using fallback due to AI provider issue"
-        : "Questions generated successfully",
+      success: true,
+      message: "Questions generated successfully",
+      fallbackUsed: false,
       provider: result.provider,
-      usedFallback: result.usedFallback,
-      providerError: result.error || null,
+      usedFallback: false,
+      providerError: null,
       generatedId: generated._id,
       questions: result.questions
     });
   } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("[AI_CONTROLLER] generateAiQuestions failed:", error?.message || error);
+
+    if (error?.message === "AI API FAILED") {
+      return res.status(502).json({
+        success: false,
+        error: "AI generation failed",
+        fallbackUsed: false
+      });
+    }
+
     return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }
 };

@@ -44,18 +44,17 @@ const taskSchema = new mongoose.Schema(
 
 taskSchema.index({ userId: 1, status: 1 });
 
-taskSchema.pre("save", function (next) {
+taskSchema.pre("save", async function () {
   if (this.isModified("status")) {
     this.completedAt = this.status === "Completed" ? new Date() : null;
   }
-  next();
 });
 
-taskSchema.pre("findOneAndUpdate", function (next) {
+taskSchema.pre("findOneAndUpdate", async function () {
   const update = this.getUpdate();
 
   if (!update) {
-    return next();
+    return;
   }
 
   const status = update.status || (update.$set && update.$set.status);
@@ -75,8 +74,6 @@ taskSchema.pre("findOneAndUpdate", function (next) {
       update.completedAt = null;
     }
   }
-
-  next();
 });
 
 module.exports = mongoose.model("Task", taskSchema);

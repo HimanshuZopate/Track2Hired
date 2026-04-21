@@ -5,6 +5,7 @@ const { getTodaySuggestion } = require("../controllers/suggestionController");
 
 router.use(protect);
 
+router.get("/", getTodaySuggestion);
 router.get("/today", getTodaySuggestion);
 
 module.exports = router;

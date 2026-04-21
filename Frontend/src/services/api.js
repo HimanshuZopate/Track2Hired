@@ -1,94 +1,97 @@
 import axios from 'axios'
 
+// ─── Token key ────────────────────────────────────────────────────────────────
+// Stored in sessionStorage so it is automatically cleared when the tab/browser
+// is closed or the page is refreshed — session-only authentication.
 const AUTH_TOKEN_KEY = 'track2hired_token'
 
+// ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
   baseURL: '/',
   timeout: 15000,
 })
 
+// ─── JWT helpers ──────────────────────────────────────────────────────────────
 const isLikelyJwt = (value) =>
   typeof value === 'string' && value.startsWith('eyJ') && value.split('.').length === 3
 
-const extractTokenDeep = (input) => {
-  if (!input) return null
-
-  if (typeof input === 'string') {
-    if (isLikelyJwt(input)) return input
-    try {
-      return extractTokenDeep(JSON.parse(input))
-    } catch {
-      return null
-    }
+const isJwtActive = (token) => {
+  if (!isLikelyJwt(token)) return false
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const exp = Number(payload?.exp || 0)
+    // No exp claim → treat as non-expiring (server controls it)
+    if (!exp) return true
+    return Date.now() < exp * 1000
+  } catch {
+    return false
   }
-
-  if (Array.isArray(input)) {
-    for (const item of input) {
-      const token = extractTokenDeep(item)
-      if (token) return token
-    }
-    return null
-  }
-
-  if (typeof input === 'object') {
-    const direct = input.token || input.jwt || input.authToken || input.accessToken
-    if (direct && isLikelyJwt(direct)) return direct
-
-    for (const value of Object.values(input)) {
-      const token = extractTokenDeep(value)
-      if (token) return token
-    }
-  }
-
-  return null
 }
 
+// ─── Public token API ─────────────────────────────────────────────────────────
+
+/**
+ * Returns the active JWT from sessionStorage, or null if absent / expired.
+ * Uses ONLY sessionStorage — nothing persists across tabs or page refreshes.
+ */
 export const getAuthToken = () => {
-  const primary = localStorage.getItem(AUTH_TOKEN_KEY)
-  if (primary) return primary
+  const token = sessionStorage.getItem(AUTH_TOKEN_KEY)
+  if (!token) return null
 
-  const stores = [localStorage, sessionStorage]
+  if (isJwtActive(token)) return token
 
-  for (const store of stores) {
-    const directKeys = ['token', 'jwt', 'authToken', 'accessToken']
-    for (const key of directKeys) {
-      const value = store.getItem(key)
-      if (value) return value
-    }
-
-    const objectKeys = ['user', 'userInfo', 'auth']
-    for (const key of objectKeys) {
-      const raw = store.getItem(key)
-      if (!raw) continue
-
-      const token = extractTokenDeep(raw)
-      if (token) return token
-    }
-
-    for (let i = 0; i < store.length; i += 1) {
-      const key = store.key(i)
-      if (!key) continue
-
-      const raw = store.getItem(key)
-      if (!raw) continue
-
-      const token = extractTokenDeep(raw)
-      if (token) return token
-    }
-  }
-
+  // Token present but expired — clear it immediately
+  clearAuthToken()
   return null
 }
 
+/**
+ * Stores the JWT in sessionStorage (session-scoped, cleared on refresh/close).
+ * Also clears any legacy localStorage token so old persistent sessions are
+ * invalidated the first time a user visits after this update.
+ */
 export const setAuthToken = (token) => {
   if (!token) return
-  localStorage.setItem(AUTH_TOKEN_KEY, token)
-}
-
-export const clearAuthToken = () => {
+  // Remove any legacy localStorage token on the first login after migration
   localStorage.removeItem(AUTH_TOKEN_KEY)
+  localStorage.removeItem('token')
+  sessionStorage.setItem(AUTH_TOKEN_KEY, token)
 }
 
+/**
+ * Removes the JWT from sessionStorage and clears any localStorage remnants.
+ */
+export const clearAuthToken = () => {
+  sessionStorage.removeItem(AUTH_TOKEN_KEY)
+  // Belt-and-suspenders: remove legacy keys so old persistent sessions die
+  localStorage.removeItem(AUTH_TOKEN_KEY)
+  localStorage.removeItem('token')
+}
+
+// ─── Dashboard API shortcuts ──────────────────────────────────────────────────
+export const dashboardApi = {
+  getProfile:         () => api.get('/api/users/profile'),
+  getStreak:          () => api.get('/api/streak'),
+  getReadiness:       () => api.get('/api/readiness'),
+  getSkills:          () => api.get('/api/skills'),
+  getTasks:           () => api.get('/api/tasks'),
+  getAnalyticsSummary:() => api.get('/api/analytics/summary'),
+  getSuggestions:     () => api.get('/api/suggestions'),
+  getTodaySuggestion: () => api.get('/api/suggestions/today'),
+  getTrends:          () => api.get('/api/analytics/trends'),
+  getStreakHistory:   () => api.get('/api/streak/history'),
+}
+
+// ─── Practice API shortcuts (DB Driven) ───────────────────────────────────────
+export const practiceApi = {
+  searchTopics:       (query) => api.get(`/api/topics/search?q=${encodeURIComponent(query)}`),
+  getTopics:          () => api.get('/api/topics'),
+  generateQuestions:  (data) => api.post('/api/questions/generate', data),
+  validateAnswer:     (data) => api.post('/api/questions/validate', data),
+  getStats:           () => api.get('/api/questions/stats'),
+}
+
+// ─── Request interceptor — attach Bearer token ────────────────────────────────
 api.interceptors.request.use((config) => {
   const token = getAuthToken()
   if (token) {
@@ -97,18 +100,17 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// ─── Response interceptor — handle 401 (expired / invalid token) ──────────────
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401) {
       clearAuthToken()
-
       const isAuthRoute = ['/login', '/register'].includes(window.location.pathname)
       if (!isAuthRoute) {
         window.location.href = '/login'
       }
     }
-
     return Promise.reject(error)
   },
 )
