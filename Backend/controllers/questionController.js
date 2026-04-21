@@ -1,165 +1,330 @@
+const mongoose = require("mongoose");
 const Question = require("../models/Question");
 const Topic = require("../models/Topic");
 const QuestionAttempt = require("../models/QuestionAttempt");
-const mongoose = require("mongoose");
+const ReadinessScore = require("../models/ReadinessScore");
+const { calculateAndUpsertReadiness } = require("../services/readinessService");
+const { updateSkillConfidence } = require("../services/skillProgressionService");
+const { recordUserActivity } = require("../services/streakService");
 
-// Generate Questions using Aggregation Framework $sample
+const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizeText = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9+#.\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const shuffleArray = (items = []) => {
+  const clone = [...items];
+  for (let index = clone.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [clone[index], clone[randomIndex]] = [clone[randomIndex], clone[index]];
+  }
+  return clone;
+};
+
+const clampCount = (count) => Math.min(10, Math.max(1, Number(count) || 5));
+
+const selectQuestions = (questions, { difficulty, type, count }) => {
+  const typedPool = type === "Mixed" ? questions : questions.filter((question) => question.type === type);
+  const exactDifficulty = shuffleArray(
+    typedPool.filter((question) => question.difficulty === difficulty)
+  );
+  const remainingDifficulty = shuffleArray(
+    typedPool.filter((question) => question.difficulty !== difficulty)
+  );
+
+  const combined = [...exactDifficulty, ...remainingDifficulty];
+  const selected = combined.slice(0, count);
+
+  if (type === "Mixed" && selected.length < count) {
+    const selectedIds = new Set(selected.map((question) => String(question._id)));
+    const fallbackQuestions = shuffleArray(
+      questions.filter((question) => !selectedIds.has(String(question._id)))
+    );
+    return shuffleArray([...selected, ...fallbackQuestions].slice(0, count));
+  }
+
+  return shuffleArray(selected);
+};
+
+const toResponseQuestion = (question, topicName) => ({
+  id: String(question._id),
+  question: question.question,
+  type: question.type,
+  options: Array.isArray(question.options) ? shuffleArray(question.options.map(String)) : [],
+  tags: question.tags || [],
+  difficulty: question.difficulty,
+  topicName,
+  topicId: question.topicId,
+  skillName: question.skillName,
+  explanation: question.explanation
+});
+
+const evaluateTheoryAnswer = (question, userAnswer) => {
+  const normalizedAnswer = normalizeText(userAnswer);
+  const keywords = Array.isArray(question.keywords)
+    ? question.keywords.map(normalizeText).filter(Boolean)
+    : [];
+
+  const totalKeywords = keywords.length;
+  const matchedKeywords = keywords.filter((keyword) => normalizedAnswer.includes(keyword)).length;
+
+  if (!totalKeywords) {
+    const isCorrect = normalizedAnswer.split(" ").filter(Boolean).length >= 12;
+    return {
+      isCorrect,
+      score: isCorrect ? 70 : 35,
+      matchedKeywords: 0,
+      totalKeywords: 0
+    };
+  }
+
+  const score = Math.round((matchedKeywords / totalKeywords) * 100);
+  const threshold = Math.max(2, Math.ceil(totalKeywords * 0.6));
+
+  return {
+    isCorrect: matchedKeywords >= threshold,
+    score,
+    matchedKeywords,
+    totalKeywords
+  };
+};
+
+// POST /api/questions/generate
 exports.generateQuestions = async (req, res, next) => {
   try {
-    const { topic, difficulty, type, count = 5 } = req.body;
-    
+    const { topic, difficulty, type, count = 5, excludeQuestionIds = [] } = req.body;
+
     if (!topic || !difficulty || !type) {
-        return res.status(400).json({ message: "Topic, difficulty, and type are required." });
+      return res.status(400).json({ message: "Topic, difficulty, and type are required." });
     }
 
-    const topicDoc = await Topic.findOne({ name: new RegExp(`^${topic}$`, "i") });
+    const topicDoc = await Topic.findOne({
+      name: new RegExp(`^${escapeRegex(String(topic).trim())}$`, "i")
+    });
     if (!topicDoc) {
-        return res.status(404).json({ message: "Topic not found." });
+      return res.status(404).json({ message: "Topic not found." });
     }
 
-    const query = { topicId: topicDoc._id, difficulty };
-    if (type !== "Mixed") {
-        query.type = type;
+    const excludedIds = Array.isArray(excludeQuestionIds)
+      ? excludeQuestionIds
+          .filter((id) => mongoose.Types.ObjectId.isValid(String(id)))
+          .map((id) => new mongoose.Types.ObjectId(String(id)))
+      : [];
+
+    const query = { topicId: topicDoc._id };
+    if (excludedIds.length) {
+      query._id = { $nin: excludedIds };
     }
 
-    // Find requested count using $sample for randomness
-    const questions = await Question.aggregate([
-      { $match: query },
-      { $sample: { size: Number(count) } },
-      { $project: { topicId: 0, createdAt: 0, updatedAt: 0, __v: 0 } }
-    ]);
+    const topicQuestions = await Question.find(query).lean();
 
-    res.status(200).json({ 
+    if (!topicQuestions.length) {
+      return res.status(200).json({
         success: true,
         topic: topicDoc.name,
         topicId: topicDoc._id,
-        questions: questions.map(q => ({
-            id: q._id.toString(),
-            question: q.question,
-            type: q.type,
-            options: q.options,
-            tags: q.tags,
-            difficulty: q.difficulty,
-            topicName: topicDoc.name,
-            answer: q.answer,
-            explanation: q.explanation
-        })) 
+        requestedCount: clampCount(count),
+        returnedCount: 0,
+        questions: [],
+        message: "No more curated questions are available for this session and topic."
+      });
+    }
+
+    const selectedQuestions = selectQuestions(topicQuestions, {
+      difficulty,
+      type,
+      count: clampCount(count)
+    });
+
+    return res.status(200).json({
+      success: true,
+      topic: topicDoc.name,
+      topicId: topicDoc._id,
+      requestedCount: clampCount(count),
+      returnedCount: selectedQuestions.length,
+      questions: selectedQuestions.map((question) => toResponseQuestion(question, topicDoc.name))
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Validate Answer
-exports.validateAnswer = async (req, res, next) => {
-    try {
-        const { questionId, userAnswer } = req.body;
-        
-        if (!questionId || userAnswer === undefined) {
-             return res.status(400).json({ message: "questionId and userAnswer are required." });
-        }
+const attemptQuestion = async (req, res, next) => {
+  try {
+    const { questionId, userAnswer } = req.body;
 
-        const question = await Question.findById(questionId);
-        if (!question) {
-            return res.status(404).json({ message: "Question not found." });
-        }
-
-        let isCorrect = false;
-        let score = 0;
-        let matchedKeywords = 0;
-        let totalKeywords = 0;
-
-        if (question.type === "MCQ") {
-            isCorrect = question.answer.trim() === userAnswer.trim();
-            score = isCorrect ? 100 : 0;
-        } else {
-            // Theory keyword validation
-            if (question.keywords && question.keywords.length > 0) {
-                totalKeywords = question.keywords.length;
-                const answerLower = userAnswer.toLowerCase();
-                question.keywords.forEach(kw => {
-                    if (answerLower.includes(kw.toLowerCase())) {
-                        matchedKeywords++;
-                    }
-                });
-                score = Math.round((matchedKeywords / totalKeywords) * 100);
-                isCorrect = score >= 60; // 60% threshold for theory
-            } else {
-                // simple length-based or contains validation if no keywords
-                isCorrect = userAnswer.length >= 10;
-                score = isCorrect ? 60 : 0;
-            }
-        }
-
-        // Record attempt
-        await QuestionAttempt.findOneAndUpdate(
-            { userId: req.user._id, questionId: questionId },
-            {
-              $set: {
-                userAnswer: userAnswer,
-                isCorrect,
-                score,
-                difficulty: question.difficulty,
-                topicId: question.topicId
-              },
-              $inc: { attemptCount: 1 }
-            },
-            { upsert: true, setDefaultsOnInsert: true }
-        );
-
-        res.status(200).json({
-            isCorrect,
-            score,
-            matchedKeywords,
-            totalKeywords,
-            correctAnswer: question.answer,
-            explanation: question.explanation
-        });
-    } catch(error) {
-        next(error);
+    if (!questionId || userAnswer === undefined) {
+      return res.status(400).json({ message: "questionId and userAnswer are required." });
     }
+
+    const question = await Question.findById(questionId).populate("topicId", "name");
+    if (!question) {
+      return res.status(404).json({ message: "Question not found." });
+    }
+
+    let evaluation;
+    if (question.type === "MCQ") {
+      const isCorrect = normalizeText(question.answer) === normalizeText(userAnswer);
+      evaluation = {
+        isCorrect,
+        score: isCorrect ? 100 : 0,
+        matchedKeywords: 0,
+        totalKeywords: 0
+      };
+    } else {
+      evaluation = evaluateTheoryAnswer(question, userAnswer);
+    }
+
+    const existingAttempt = await QuestionAttempt.findOne({
+      userId: req.user._id,
+      questionId: String(questionId)
+    });
+
+    const attempt = await QuestionAttempt.findOneAndUpdate(
+      { userId: req.user._id, questionId: String(questionId) },
+      {
+        $set: {
+          userAnswer: String(userAnswer).trim(),
+          isCorrect: evaluation.isCorrect,
+          score: evaluation.score,
+          difficulty: question.difficulty,
+          topicId: question.topicId?._id || question.topicId,
+          skillName: question.skillName
+        },
+        $inc: { attemptCount: 1 }
+      },
+      { upsert: true, setDefaultsOnInsert: true, returnDocument: "after" }
+    );
+
+    const shouldImproveSkill = evaluation.isCorrect && !existingAttempt?.isCorrect;
+
+    let skillProgress = {
+      improved: false,
+      created: false,
+      delta: 0,
+      oldConfidence: null,
+      newConfidence: null,
+      skillName: question.skillName
+    };
+
+    let readiness = await ReadinessScore.findOne({ userId: req.user._id });
+
+    if (shouldImproveSkill) {
+      const progression = await updateSkillConfidence(
+        req.user._id,
+        question.skillName,
+        question.difficulty,
+        { category: "Technical" }
+      );
+
+      skillProgress = {
+        improved: progression.improved,
+        created: progression.created,
+        delta: progression.delta,
+        oldConfidence: progression.oldConfidence,
+        newConfidence: progression.newConfidence,
+        skillName: question.skillName
+      };
+
+      readiness = progression.readiness;
+    } else if (!readiness) {
+      readiness = await calculateAndUpsertReadiness(req.user._id);
+    }
+
+    await recordUserActivity(req.user._id, "QuestionAttempt", attempt._id);
+
+    return res.status(200).json({
+      success: true,
+      isCorrect: evaluation.isCorrect,
+      score: evaluation.score,
+      matchedKeywords: evaluation.matchedKeywords,
+      totalKeywords: evaluation.totalKeywords,
+      correctAnswer: question.answer,
+      explanation: question.explanation,
+      topicName: question.topicId?.name || "",
+      skillName: question.skillName,
+      difficulty: question.difficulty,
+      skillProgress,
+      readiness,
+      attempt: {
+        questionId: String(questionId),
+        attemptCount: attempt.attemptCount,
+        isCorrect: attempt.isCorrect,
+        score: attempt.score,
+        skillName: attempt.skillName,
+        difficulty: attempt.difficulty
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
-// Get User Stats
+// POST /api/questions/attempt
+exports.attemptQuestion = attemptQuestion;
+// Backward-compatible alias
+exports.validateAnswer = attemptQuestion;
+
+// GET /api/questions/stats
 exports.getUserStats = async (req, res, next) => {
-    try {
-        const userId = req.user._id;
+  try {
+    const userId = req.user._id;
 
-        const attempts = await QuestionAttempt.find({ userId }).populate("topicId");
+    const [attempts, readiness] = await Promise.all([
+      QuestionAttempt.find({ userId }).populate("topicId", "name").lean(),
+      ReadinessScore.findOne({ userId }).lean()
+    ]);
 
-        let totalAttempts = attempts.length;
-        let correctAttempts = attempts.filter(a => a.isCorrect).length;
-        let accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0;
+    const totalAttempts = attempts.reduce(
+      (sum, attempt) => sum + Number(attempt.attemptCount || 1),
+      0
+    );
+    const answeredQuestions = attempts.length;
+    const correctAttempts = attempts.filter((attempt) => attempt.isCorrect).length;
+    const accuracy = answeredQuestions > 0 ? Math.round((correctAttempts / answeredQuestions) * 100) : 0;
 
-        const topicStats = {};
-        attempts.forEach(a => {
-            if (!a.topicId) return;
-            const tName = a.topicId.name;
-            if (!topicStats[tName]) topicStats[tName] = { total: 0, correct: 0 };
-            topicStats[tName].total++;
-            if (a.isCorrect) topicStats[tName].correct++;
-        });
+    const topicStats = {};
+    attempts.forEach((attempt) => {
+      const topicName = attempt.topicId?.name || attempt.skillName || "General";
+      if (!topicStats[topicName]) {
+        topicStats[topicName] = { total: 0, correct: 0 };
+      }
+      topicStats[topicName].total += 1;
+      if (attempt.isCorrect) {
+        topicStats[topicName].correct += 1;
+      }
+    });
 
-        const topicsArray = Object.keys(topicStats).map(t => ({
-            topic: t,
-            total: topicStats[t].total,
-            accuracy: Math.round((topicStats[t].correct / topicStats[t].total) * 100)
-        }));
+    const topics = Object.entries(topicStats)
+      .map(([topicName, values]) => ({
+        topic: topicName,
+        total: values.total,
+        accuracy: Math.round((values.correct / values.total) * 100)
+      }))
+      .sort((left, right) => left.accuracy - right.accuracy || right.total - left.total);
 
-        const weakTopics = topicsArray.filter(t => t.accuracy < 50);
+    const weakTopics = topics.filter((topic) => topic.accuracy < 60);
+    const suggestions = weakTopics.length
+      ? weakTopics.map(
+          (topic) =>
+            `Focus on ${topic.topic}: review the explanation, revisit fundamentals, and retry medium questions to push accuracy beyond ${topic.accuracy}%.`
+        )
+      : ["Great consistency so far. Increase the difficulty or switch topics to keep improving."];
 
-        const suggestions = weakTopics.map(t => `Focus on improving ${t.topic}. Your accuracy is ${t.accuracy}%.`);
-        if (suggestions.length === 0) suggestions.push("Great job! Keep practicing to maintain your accuracy.");
-
-        res.status(200).json({
-            totalAttempts,
-            accuracy,
-            topics: topicsArray,
-            weakTopics,
-            suggestions
-        });
-
-    } catch(error) {
-        next(error);
-    }
+    return res.status(200).json({
+      totalAttempts,
+      answeredQuestions,
+      accuracy,
+      topics,
+      weakTopics,
+      suggestions,
+      readiness
+    });
+  } catch (error) {
+    next(error);
+  }
 };

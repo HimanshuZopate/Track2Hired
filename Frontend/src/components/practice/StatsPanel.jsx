@@ -1,13 +1,15 @@
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { Target, TrendingUp, AlertTriangle, Lightbulb } from 'lucide-react';
 
 export default function StatsPanel({ stats }) {
     if (!stats) return null;
 
+    const readinessScore = Math.round(Number(stats.readiness?.overallScore || 0));
+
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <motion.div 
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center"
@@ -15,9 +17,9 @@ export default function StatsPanel({ stats }) {
                     <Target className="mx-auto mb-2 text-blue-400" size={20} />
                     <p className="text-[10px] uppercase tracking-wider text-white/40">Total Attempts</p>
                     <p className="text-2xl font-bold text-almond">{stats.totalAttempts}</p>
-                </motion.div>
+                </Motion.div>
                 
-                <motion.div 
+                <Motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
@@ -26,11 +28,22 @@ export default function StatsPanel({ stats }) {
                     <TrendingUp className="mx-auto mb-2 text-emerald-400" size={20} />
                     <p className="text-[10px] uppercase tracking-wider text-white/40">Avg Accuracy</p>
                     <p className="text-2xl font-bold text-emerald-300">{stats.accuracy}%</p>
-                </motion.div>
+                </Motion.div>
+
+                <Motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center"
+                >
+                    <TrendingUp className="mx-auto mb-2 text-purple-400" size={20} />
+                    <p className="text-[10px] uppercase tracking-wider text-white/40">Readiness</p>
+                    <p className="text-2xl font-bold text-purple-300">{readinessScore}%</p>
+                </Motion.div>
             </div>
 
             {/* Topics Breakdown */}
-            <motion.div
+            <Motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
@@ -61,13 +74,13 @@ export default function StatsPanel({ stats }) {
                         ))}
                     </div>
                 ) : (
-                    <p className="text-center text-xs text-white/30 py-2">Not enough data. Practice more!</p>
+                    <p className="text-center text-xs text-white/30 py-2">Not enough data yet. Solve a few curated interview questions first.</p>
                 )}
-            </motion.div>
+            </Motion.div>
 
             {/* AI Suggestions mock / DB Suggestions */}
             {stats.suggestions && stats.suggestions.length > 0 && (
-                <motion.div
+                <Motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
@@ -82,7 +95,7 @@ export default function StatsPanel({ stats }) {
                             <li key={i}>{s}</li>
                         ))}
                     </ul>
-                </motion.div>
+                </Motion.div>
             )}
         </div>
     );

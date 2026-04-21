@@ -1,10 +1,10 @@
 import { motion as Motion } from 'framer-motion'
-import { BookOpen, CheckCircle2, Lightbulb, RefreshCcw, XCircle } from 'lucide-react'
+import { BookOpen, CheckCircle2, Lightbulb, RefreshCcw, TrendingUp, XCircle } from 'lucide-react'
 
 function FeedbackBox({ feedback, question, onReset }) {
   if (!feedback) return null
 
-  const { isCorrect, attemptCount, attempt } = feedback
+  const { isCorrect, attemptCount } = feedback
 
   return (
     <Motion.div
@@ -94,6 +94,28 @@ function FeedbackBox({ feedback, question, onReset }) {
               }}
             >
               {question.explanation}
+            </div>
+          </div>
+        )}
+
+        {feedback.skillProgress?.improved && (
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-widest text-cyan-300/80">
+              <TrendingUp size={11} />
+              Skill Progress
+            </div>
+            <div
+              className="rounded-xl px-4 py-3 text-sm text-cyan-100/85 leading-relaxed"
+              style={{
+                background: 'rgba(34,211,238,0.08)',
+                borderLeft: '3px solid rgba(34,211,238,0.4)',
+              }}
+            >
+              Your <strong>{feedback.skillProgress.skillName}</strong> confidence improved by {feedback.skillProgress.delta}.
+              It is now <strong>{feedback.skillProgress.newConfidence}/5</strong>.
+              {feedback.readiness?.overallScore !== undefined && (
+                <span> Updated readiness: <strong>{Math.round(Number(feedback.readiness.overallScore || 0))}%</strong>.</span>
+              )}
             </div>
           </div>
         )}

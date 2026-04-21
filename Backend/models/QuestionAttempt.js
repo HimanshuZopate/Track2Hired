@@ -19,6 +19,11 @@ const questionAttemptSchema = new mongoose.Schema(
       default: null,
       index: true
     },
+    skillName: {
+      type: String,
+      default: null,
+      trim: true
+    },
     userAnswer: {
       type: String,
       required: true,

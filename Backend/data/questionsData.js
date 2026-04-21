@@ -11,272 +11,721 @@ const topics = [
   { name: "Cloud (AWS basics)", category: "Cloud" },
   { name: "Git", category: "Tools" },
   { name: "SQL", category: "Data Analyst" },
-  { name: "Data Structures", category: "Programming" },
+  { name: "Data Structures", category: "Programming" }
 ];
 
-const rawData = {
-  "React": [
-    { type: "Theory", difficulty: "Easy", tags: ["Frequently Asked", "Important"], question: "What is the Virtual DOM?", answer: "An in-memory representation of the actual DOM element. React uses it to figure out the minimal number of DOM operations required to update the UI.", explanation: "The Virtual DOM optimizes rendering by batching updates and comparing the new state with a snapshot of the old state.", keywords: ["in-memory", "representation", "minimal", "DOM operations", "update"] },
-    { type: "Theory", difficulty: "Easy", tags: ["Important"], question: "What is JSX?", answer: "JSX is a syntax extension for JavaScript that allows you to write HTML-like markup inside JavaScript files.", explanation: "Browsers cannot directly read JSX, so it must be compiled into standard JavaScript operations using tools like Babel.", keywords: ["syntax extension", "HTML-like", "markup"] },
-    { type: "MCQ", difficulty: "Easy", tags: ["Important"], question: "What does the useState hook allow you to do?", options: ["Fetch data securely from APIs", "Manage local component state", "Define a class component", "Interact directly with Redux"], answer: "Manage local component state", explanation: "useState adds local state management capabilities to functional components." },
-    { type: "MCQ", difficulty: "Easy", tags: [], question: "Which hook should you use for executing side-effects after a render?", options: ["useMemo", "useContext", "useReducer", "useEffect"], answer: "useEffect", explanation: "useEffect synchronizes your component with an external system and runs after the DOM is updated." },
-    { type: "Theory", difficulty: "Medium", tags: ["Important"], question: "What is prop drilling and how do you avoid it?", answer: "Prop drilling is passing data from a high-level component multiple layers down to reach a deeply nested child. Avoid it by using the Context API, Redux, or component composition.", explanation: "Passing props through intermediate components that don't need the data pollutes the architecture.", keywords: ["passing data", "multiple layers", "nested", "Context API", "Redux", "composition"] },
-    { type: "MCQ", difficulty: "Medium", tags: ["Tricky"], question: "What happens if you update state directly without using the setState function?", options: ["The component re-renders instantly", "React throws a runtime error", "The state updates but the component does not re-render", "React batches the update correctly"], answer: "The state updates but the component does not re-render", explanation: "React is unaware of the direct mutation and will not trigger a reconciliation cycle." },
-    { type: "Theory", difficulty: "Medium", tags: ["Important"], question: "How does React.memo() work?", answer: "It is a higher order component that wraps a functional component to prevent unnecessary re-renders if its props have not changed (shallow comparison).", explanation: "It boosts performance by skipping the render phase for purely functional components when data stays the same.", keywords: ["higher order component", "prevent", "re-renders", "props", "shallow comparison"] },
-    { type: "Theory", difficulty: "Medium", tags: ["Frequently Asked"], question: "Explain the difference between controlled and uncontrolled components.", answer: "In a controlled component, form inputs derive their value from React state. Uncontrolled components rely on the DOM to maintain form state, usually accessed via refs.", explanation: "Controlled components are standard practice in React to keep a single source of truth.", keywords: ["inputs", "React state", "DOM", "refs", "source of truth"] },
-    { type: "MCQ", difficulty: "Medium", tags: ["Important"], question: "What is the primary purpose of the 'key' attribute when rendering lists?", options: ["To define unique CSS styles", "To help React identify which items have changed, been added, or removed", "To create unique IDs in the DOM", "To bind the list data correctly"], answer: "To help React identify which items have changed, been added, or removed", explanation: "Keys give elements a stable identity, ensuring the reconciliation algorithm efficiently manages list updates." },
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "Which of these is NOT a rule of React Hooks?", options: ["Only call Hooks at the top level", "Only call Hooks from React function components", "Do not call Hooks from regular JavaScript functions", "Hooks must always be called inside a useMemo block"], answer: "Hooks must always be called inside a useMemo block", explanation: "Hooks are not restricted to being inside a useMemo block." },
-    { type: "Theory", difficulty: "Hard", tags: ["Important"], question: "What are Higher Order Components (HOC)?", answer: "An HOC is a pure function that takes a component argument and returns a new enclosed component, used largely to reuse component logic.", explanation: "Common implementations include redux connect() and router wrappers.", keywords: ["function", "takes a component", "returns", "reuse", "logic"] },
-    { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "How does the reconciliation algorithm (diffing) compare two elements of different types?", answer: "React will inherently tear down the old tree and build a completely new tree from scratch when it sees root elements of different types.", explanation: "This strategy ensures optimal performance rather than trying to recursively compare incompatible structures.", keywords: ["tear down", "old tree", "new tree", "scratch", "different types"] },
-    { type: "MCQ", difficulty: "Hard", tags: [], question: "How do you correctly implement Error Boundaries in React 18?", options: ["Using a try-catch block inside a functional component", "Wrapping the app in the useErrorBoundary hook", "Creating a Class component that implements static getDerivedStateFromError()", "Calling error.catch() on the ReactDOM render method"], answer: "Creating a Class component that implements static getDerivedStateFromError()", explanation: "Currently, error boundaries can only be created using class components." },
-    { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "What is the useReducer hook and when would you use it over useState?", answer: "It manages complex state architectures. You use it when the next state depends tightly on the previous state, or when dealing with multiple sub-values.", explanation: "It mirrors the Redux pattern locally inside a component.", keywords: ["complex state", "depends", "previous state", "sub-values"] },
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "What describes the main difference between useMemo and useCallback?", options: ["useMemo caches a value, useCallback caches a function definition", "useMemo caches a function definition, useCallback caches a value", "useMemo executes asynchronously, useCallback executes synchronously", "There is no functional difference"], answer: "useMemo caches a value, useCallback caches a function definition", explanation: "useCallback is essentially sugar for useMemo returning a function." },
-    { type: "Theory", difficulty: "Medium", tags: [], question: "Explain the concept of 'Lifting State Up'.", answer: "When several components need to share the same changing data, you move the specific state declaration up to their closest common ancestor.", explanation: "This ensures the ancestor operates as the source of truth.", keywords: ["share", "changing data", "move", "closest common ancestor", "source of truth"] },
-    { type: "MCQ", difficulty: "Easy", tags: [], question: "Can a React function component return multiple elements without a parent container?", options: ["Yes, if they are separated by commas", "No, unless you wrap them in a Fragment (<></>)", "Yes, natively in raw JSX", "No, they must be wrapped in a <div>"], answer: "No, unless you wrap them in a Fragment (<></>)", explanation: "JSX must compile down to a single top-level node. Fragments solve this without adding extra DOM nodes." },
-    { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "Why is it unsafe to use the array index as a key in React lists?", answer: "If the list items are dynamically reordered, inserted, or deleted, using the index can cause React to mismatch state maps or incorrectly render old data.", explanation: "Indexes are not permanently tied to the object they represent.", keywords: ["reordered", "inserted", "deleted", "mismatch state", "incorrectly render"] },
-    { type: "Theory", difficulty: "Medium", tags: [], question: "What is Context API?", answer: "Context API is a React structure that enables exchanging data down the component tree without manually passing props at every level.", explanation: "It avoids prop-drilling for global data like themes, locales, or auth states.", keywords: ["exchanging data", "component tree", "manually passing props", "global data"] },
-    { type: "MCQ", difficulty: "Hard", tags: ["Important"], question: "In the context of SSR (Server-Side Rendering) with React, what does 'hydration' achieve?", options: ["It compiles JSX to HTML strings", "It populates the Redux store on the server", "It attaches event listeners to the static HTML markup delivered from the server", "It injects CSS files into the DOM"], answer: "It attaches event listeners to the static HTML markup delivered from the server", explanation: "Hydration brings the static server HTML to life by attaching application state and interactivity." }
-  ],
-  "Node.js": [
-    { type: "Theory", difficulty: "Easy", tags: ["Frequently Asked", "Important"], question: "What is Node.js?", answer: "An open-source, cross-platform runtime environment built on Chrome's V8 engine that enables Javascript execution server-side.", explanation: "Node revolutionized web development by allowing JS to execute outside the browser environment.", keywords: ["runtime environment", "Chrome's V8", "server-side", "outside the browser"] },
-    { type: "MCQ", difficulty: "Easy", tags: ["Important"], question: "Node.js relies strongly on which architectural characteristic?", options: ["Multi-threaded synchronous blocking I/O", "Single-threaded event-driven non-blocking I/O", "Stateless multi-process pooling", "Persistent synchronized thread rendering"], answer: "Single-threaded event-driven non-blocking I/O", explanation: "Node leverages the libuv library and V8 engine to efficiently handle concurrent connections without locking threads." },
-    { type: "Theory", difficulty: "Medium", tags: ["Frequently Asked", "Important"], question: "Explain the Node.js Event Loop.", answer: "The Event Loop dictates how Node handles asynchronous operations. It runs on a single thread and offloads blocking tasks (like I/O) to the OS kernel, picking up their callbacks once completed across various phases (Timers, Poll, Check).", explanation: "It makes Node.js fast despite being single-threaded.", keywords: ["asynchronous operations", "single thread", "offloads blocking tasks", "callbacks", "Timers, Poll, Check"] },
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "What module provides an API to interact with the file system?", options: ["path", "os", "fs", "system"], answer: "fs", explanation: "The 'fs' (file system) module allows reading, writing, and mutating local drives." },
-    { type: "Theory", difficulty: "Easy", tags: [], question: "What is NPM?", answer: "Node Package Manager. It is both a CLI tool used to install and manage project dependencies and an online registry of public Javascript packages.", explanation: "It manages the node_modules folder based on package.json.", keywords: ["Node Package Manager", "CLI tool", "install", "dependencies", "registry"] },
-    { type: "Theory", difficulty: "Medium", tags: ["Tricky"], question: "How does module.exports differ from exports in Node?", answer: "exports is just a reference variable to module.exports. If you assign a new object directly to exports, it breaks the reference, whereas assigning directly to module.exports safely returns the object.", explanation: "They both initially point to the same empty object.", keywords: ["reference variable", "assign a new object", "breaks the reference", "same empty object"] },
-    { type: "MCQ", difficulty: "Medium", tags: ["Important"], question: "What role does the 'package.json' file play?", options: ["It configures the Node.js compiler options", "It defines project metadata, scripts, and tracks dependency versions", "It maps JSON API routes instantly", "It compiles HTML/CSS templates for rendering"], answer: "It defines project metadata, scripts, and tracks dependency versions", explanation: "It is the heart of a Node project, generated by npm init." },
-    { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "What is the difference between process.nextTick() and setImmediate()?", answer: "process.nextTick() callbacks fire immediately at the end of the current operational phase, prioritized before the event loop advances. setImmediate() executes on the 'check' phase of the next event loop iteration.", explanation: "Despite their names, nextTick fires sooner than setImmediate.", keywords: ["current operational phase", "prioritized", "check phase", "next event loop"] },
-    { type: "MCQ", difficulty: "Hard", tags: [], question: "How can you utilize multiple CPU cores in a Node.js application?", options: ["By using the async/await syntax to force thread pooling", "By using the 'cluster' module to spawn worker processes", "By changing the event-loop config flags", "Node is strictly single-thread and cannot use multiple cores"], answer: "By using the 'cluster' module to spawn worker processes", explanation: "Clustering allows spinning up multiple instances of Node that share the same server port." },
-    { type: "Theory", difficulty: "Medium", tags: [], question: "What are Streams in Node.js?", answer: "Streams are collections of transient data that process files/network traffic piece-by-piece rather than loading the whole payload into RAM.", explanation: "They are categorized into Readable, Writable, Duplex, and Transform.", keywords: ["transient data", "piece-by-piece", "loading the whole", "Readable", "Writable"] },
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "Which core module is explicitly designed to handle directory parsing and file routings?", options: ["fs", "path", "url", "dir"], answer: "path", explanation: "The path module normalizes and joins paths securely across different OS environments." },
-    { type: "Theory", difficulty: "Hard", tags: ["Important"], question: "Explain the concept of Callback Hell and how to mitigate it.", answer: "Callback Hell occurs when heavy nesting of anonymous asynchronous callbacks makes code unreadable and hard to maintain. Mitigate it by using Promises and async/await syntax.", explanation: "It looks like a sideways pyramid.", keywords: ["nesting", "anonymous asynchronous callbacks", "unreadable", "Promises", "async/await"] },
-    { type: "Theory", difficulty: "Easy", tags: [], question: "What does the 'require' function do?", answer: "It is a built-in CommonJS utility used to include external modules, JSON files, and local files into the current file context securely.", explanation: "ES6 uses 'import' but 'require' is Node's native module loader.", keywords: ["include external modules", "JSON files", "CommonJS", "loader"] },
-    { type: "MCQ", difficulty: "Hard", tags: [], question: "Node's EventEmitter class uses which design pattern?", options: ["Observer pattern", "Singleton pattern", "Factory pattern", "MVC pattern"], answer: "Observer pattern", explanation: "It emits events that registered listeners 'observe' and react to." },
-    { type: "Theory", difficulty: "Medium", tags: [], question: "What is middleware?", answer: "Functions executed in the middle of the request-response cycle that have access to the req and res objects, often used to modify them or end the connection.", explanation: "Used extensively in frameworks like Express for auth or logging.", keywords: ["middle", "request-response cycle", "req and res", "modify", "end"] },
-    { type: "MCQ", difficulty: "Easy", tags: [], question: "Which statement properly imports the built-in HTTP module?", options: ["import(http)", "const http = require('http')", "require HTTP", "const http = module('http')"], answer: "const http = require('http')", explanation: "Standard CommonJS syntax." },
-    { type: "Theory", difficulty: "Medium", tags: [], question: "How does Node.js handle cross-origin requests (CORS)?", answer: "Node natively restricts none; CORS is a browser security feature. A Node web server must manually attach `Access-Control-Allow-Origin` HTTP headers so browsers permit the response payload.", explanation: "Typically managed using the 'cors' middleware package.", keywords: ["browser security feature", "attach HTTP headers", "Access-Control-Allow-Origin", "permit"] },
-    { type: "MCQ", difficulty: "Hard", tags: ["Tricky"], question: "What will happen if an unhandled exception occurs in a Node application?", options: ["A warning logs, but the application continues", "The application crashes and the process exits", "The Event loop restarts automatically", "The exception is caught by a global fallback proxy"], answer: "The application crashes and the process exits", explanation: "Unhandled exceptions crash the isolated process instantly unless a process.on('uncaughtException') handles it." },
-    { type: "Theory", difficulty: "Hard", tags: [], question: "Explain libuv in the context of Node.js.", answer: "Libuv is a multi-platform C library that provides support for asynchronous I/O based on event loops. It abstracts network and file operations, delegating threads to the OS.", explanation: "Libuv is the engine of the non-blocking execution inside Node.", keywords: ["C library", "asynchronous I/O", "event loops", "abstracts", "delegating"] },
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "Which global object allows interaction with the current running Node environment and terminal arguments?", options: ["global", "window", "process", "env"], answer: "process", explanation: "The 'process' object provides info about, and control over, the current Node.js shell process." }
-  ],
-  "MongoDB": [
-    { type: "Theory", difficulty: "Easy", tags: ["Important"], question: "What type of database is MongoDB?", answer: "It is a NoSQL, cross-platform document-oriented database that stores data in flexible, JSON-like structures called BSON.", explanation: "Unlike traditional SQL tables, it offers schema flexibility.", keywords: ["NoSQL", "document-oriented", "flexible", "JSON-like", "BSON"] },
-    { type: "MCQ", difficulty: "Easy", tags: [], question: "Instead of 'tables' and 'rows', what does MongoDB use?", options: ["Graphs and Nodes", "Collections and Documents", "Clusters and Entries", "Buckets and Keys"], answer: "Collections and Documents", explanation: "Collections house multiple BSON Documents." },
-    { type: "Theory", difficulty: "Medium", tags: ["Frequently Asked"], question: "What is an ObjectId mapping to `_id`?", answer: "A unique 12-byte BSON identifier assigned by default to every document serving as the primary key. It embeds a timestamp, process ID, and a counter.", explanation: "This ensures horizontal uniqueness without complex distributed sequence generation.", keywords: ["12-byte", "BSON identifier", "primary key", "timestamp", "process ID"] },
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "Which operator is used to search for documents where a specific field exists, regardless of value?", options: ["$has", "$exists", "$type", "$isset"], answer: "$exists", explanation: "The $exists boolean operator isolates queries natively." },
-    { type: "Theory", difficulty: "Hard", tags: ["Important", "Tricky"], question: "Explain what an Aggregation Pipeline is.", answer: "A multi-stage data processing framework where documents pass through a sequence of operations ($match, $group, $sort) that transform and output aggregated results.", explanation: "It replaces complex mapping logic executed within the application layer.", keywords: ["multi-stage", "data processing", "sequence of operations", "$match", "$group", "$sort", "aggregated"] },
-    { type: "MCQ", difficulty: "Hard", tags: [], question: "What is the primary architectural purpose of utilizing a Replica Set in MongoDB?", options: ["To load-balance write operations across multiple servers", "To drastically reduce storage size of documents", "To provide high availability and automatic failover clustering", "To normalize relational mapping patterns natively"], answer: "To provide high availability and automatic failover clustering", explanation: "Replica sets maintain identical copies of the database across multiple physical nodes ensuring redundancy." },
-    { type: "Theory", difficulty: "Medium", tags: [], question: "What is an Index in MongoDB and why use it?", answer: "An Index is a specialized data structure that stores a small chunk of the collection's data in an easy to traverse ordered format. It vastly improves read query speeds.", explanation: "Without an index, Mongo performs a 'collection scan' (reads every document).", keywords: ["data structure", "ordered format", "improves read", "collection scan"] },
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "If you need to return only specific fields from a MongoDB query, what technique do you use?", options: ["Slicing", "Filtering", "Projection", "Mapping"], answer: "Projection", explanation: "Passing a secondary projection object to find() determines exactly which keys render payload." },
-    { type: "Theory", difficulty: "Hard", tags: ["Important"], question: "What is Sharding in MongoDB?", answer: "Sharding is a horizontal scaling mechanism that distributes data segments across multiple distinct servers (shards) to support multi-terabyte data stores and intense throughput requirements.", explanation: "It guarantees that a single database node isn't universally bottlenecked.", keywords: ["horizontal scaling", "distributes", "multiple distinct servers", "throughput"] },
-    { type: "Theory", difficulty: "Medium", tags: ["Frequently Asked"], question: "What is Mongoose?", answer: "Mongoose is an Object Data Modeling (ODM) abstraction library for Node.js. It facilitates strict schema validation, relationship definitions, and middleware hooks over standard MongoDB drivers.", explanation: "It forces necessary structure onto an otherwise schemaless DB.", keywords: ["Object Data Modeling", "ODM", "schema validation", "middleware hooks"] },
-    { type: "MCQ", difficulty: "Easy", tags: [], question: "Which command inserts multiple documents into a collection efficiently?", options: ["insertAll()", "addBatch()", "insertMany()", "bulkWrite()"], answer: "insertMany()", explanation: "Accepts an array of objects to insert into a collection." },
-    { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "What does the $lookup stage do in an aggregation pipeline?", answer: "It executes a left outer join to an unsharded collection in the same database, pairing documents based on defined local/foreign keys.", explanation: "It bridges the gap for 'relational' needs operating inside a NoSQL system.", keywords: ["left outer join", "unsharded collection", "pairing", "local/foreign keys"] },
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "Which Mongo shell command is used to display all databases available?", options: ["ls collections", "show dbs", "list databases", "get-dbs"], answer: "show dbs", explanation: "Typing 'show dbs' outputs the cluster's main directories." },
-    { type: "Theory", difficulty: "Medium", tags: [], question: "How does MongoDB handle transactions?", answer: "Since v4.0, MongoDB fully supports multi-document ACID transactions, allowing atomic commits and rollbacks across multiple operations.", explanation: "Operations are scoped to a session, and committed cleanly if no errors trigger a rollback.", keywords: ["ACID transactions", "atomic commits", "rollbacks", "multiple operations"] },
-    { type: "MCQ", difficulty: "Hard", tags: ["Tricky"], question: "What happens by default if you try writing to a MongoDB database targeting a Collection that does not exist yet?", options: ["It throws a CollectionNotFound Runtime Error", "The write operation is cached pending collection creation", "MongoDB instantly initializes the Collection automatically", "Data is dumped into a default 'unallocated' table"], answer: "MongoDB instantly initializes the Collection automatically", explanation: "MongoDB resolves unknown namespace paths dynamically and writes your entry into a newly constructed collection." },
-    { type: "Theory", difficulty: "Easy", tags: [], question: "What does BSON stand for?", answer: "Binary Javascript Object Notation.", explanation: "It is faster to parse and lighter to transmit than plain JSON text.", keywords: ["Binary", "Javascript Object Notation"] },
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "What is a compound index?", options: ["An index applied to a single deeply-nested array query", "An index structure holding references from two or more fields", "An encrypted index", "An index referencing external database collections"], answer: "An index structure holding references from two or more fields", explanation: "Compound indexes allow querying across combinations (like `{ name: 1, age: -1 }`)." },
-    { type: "Theory", difficulty: "Medium", tags: [], question: "Explain capped collections.", answer: "Capped collections are fixed-size collections that support high-throughput operations that insert and read documents. Once their defined limit executes, they automatically overwrite their oldest historical data.", explanation: "Excellent log rotation behaviors natively.", keywords: ["fixed-size", "high-throughput", "overwrite", "oldest historical data"] },
-    { type: "MCQ", difficulty: "Hard", tags: [], question: "To find all documents where a 'tags' array contains ALL elements 'A' and 'B', which operator is required?", options: ["$in", "$all", "$and", "$matches"], answer: "$all", explanation: "The $all operator is specific to array subsets matching exactly." },
-    { type: "Theory", difficulty: "Easy", tags: [], question: "How do you delete a collection in MongoDB?", answer: "Execute the command: db.collectionName.drop()", explanation: "This irreversibly purges the collection and its indexes altogether.", keywords: ["db", "drop", "purges"] }
-  ],
-  "Express": [
-        { type: "Theory", difficulty: "Easy", tags: ["Frequently Asked"], question: "What is Express.js?", answer: "Express is a minimalist and highly flexible web application framework for Node.js, providing robust features for generating web/mobile APIs.", explanation: "It abstracts heavy native Node HTTP processes under simpler, readable code blocks.", keywords: ["minimalist", "flexible", "web application framework", "Node.js"] },
-        { type: "MCQ", difficulty: "Easy", tags: [], question: "Which method is used to launch the Express HTTP server and begin listening for requests?", options: ["app.start()", "app.run()", "app.listen()", "app.init()"], answer: "app.listen()", explanation: "It binds the express instance to a designated network port." },
-        { type: "Theory", difficulty: "Medium", tags: ["Important"], question: "How does Middleware function in Express?", answer: "Middleware functions execute sequentially during the HTTP request-response cycle, retaining access to 'req', 'res', and 'next'. They can modify incoming requests, respond instantly, or pass control deeper into the stack via next().", explanation: "Every Express route is essentially just trailing middleware ending the chain.", keywords: ["execute sequentially", "request-response cycle", "req, res, and next", "modify", "pass control"] },
-        { type: "MCQ", difficulty: "Medium", tags: [], question: "Which middleware explicitly helps parse incoming HTTP POST payloads containing JSON data?", options: ["body.json()", "express.json()", "app.set('json')", "express.parseBody()"], answer: "express.json()", explanation: "Added natively in Express v4.16+, acting identically to the old body-parser." },
-        { type: "Theory", difficulty: "Medium", tags: ["Tricky"], question: "What delineates error-handling middleware from standard middleware?", answer: "Error-handling middleware is defined structurally with four arguments strictly: (err, req, res, next) instead of three.", explanation: "Express recognizes the exact signature to capture triggered next(err) cascades.", keywords: ["four arguments", "err, req, res, next", "signature"] },
-        { type: "MCQ", difficulty: "Medium", tags: [], question: "How can you implement parameterized dynamic routing within Express?", options: ["Defining routes like '/users/:id'", "Using query strings exclusively", "Defining routes like '/users/?id'", "Using regex blocks ONLY"], answer: "Defining routes like '/users/:id'", explanation: "The colon tells Express to parse that segment into req.params." },
-        { type: "Theory", difficulty: "Hard", tags: ["Important"], question: "What is the purpose of the Express Router instance?", answer: "The Router is a standalone modular middleware/routing module that lets developers structure clean architecture by isolating application endpoints seamlessly into diverse files rather than cluttering server.js.", explanation: "Often recognized as a 'mini-application'.", keywords: ["standalone modular", "clean architecture", "isolating", "diverse files", "mini-application"] },
-        { type: "MCQ", difficulty: "Easy", tags: [], question: "Which object contains contextual data passed via the HTTP URL query string (e.g. ?sort=desc)?", options: ["req.body", "req.params", "req.query", "req.data"], answer: "req.query", explanation: "req.query handles all key/value strings affixed after the Route path." },
-        { type: "Theory", difficulty: "Easy", tags: [], question: "How do you serve static files like images, CSS, or frontend builds inside Express?", answer: "By utilizing the specific built-in express.static() middleware targeting an explicit server directory path.", explanation: "It safely routes asset HTTP GET validations.", keywords: ["built-in", "express.static()", "directory path"] },
-        { type: "MCQ", difficulty: "Medium", tags: [], question: "Which statement properly concludes an API response cycle returning JSON data?", options: ["res.end({data: true})", "res.json({data: true})", "res.sendJson({data: true})", "res.return(data)"], answer: "res.json({data: true})", explanation: "It correctly formats headers to Content-Type: application/json." },
-        { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "Why is 'next()' important in chained Route Middlewares?", answer: "next() is vital because if a middleware doesn't end the request cycle (e.g., res.send()), it mathematically stalls the system causing infinite client timeouts without next() signaling process progression.", explanation: "It physically hands runtime execution to the subsequent stack hook.", keywords: ["end the request cycle", "infinite client timeouts", "progression", "execution"] },
-        { type: "MCQ", difficulty: "Hard", tags: [], question: "If multiple routes match a client request physically, which one will Express execute?", options: ["The one registered last in the file", "The one registered first in the file", "Express throws an Error", "Express aggregates both responses"], answer: "The one registered first in the file", explanation: "Express parses route paths from top-to-bottom precisely in declaration order." },
-        { type: "Theory", difficulty: "Medium", tags: [], question: "What does the 'cors' middleware fulfill?", answer: "It injects accurate HTTP access headers (Cross-Origin Resource Sharing) commanding external web-browsers to safely permit network exchanges happening outside the originator's domain restrictions.", explanation: "It clears 'blocked by CORS' browser errors.", keywords: ["HTTP access headers", "Cross-Origin Resource Sharing", "external", "permit restricted"] },
-        { type: "MCQ", difficulty: "Easy", tags: [], question: "Which HTTP request object targets payload bodies submitted efficiently via HTML forms?", options: ["req.forms", "req.params", "req.body", "req.payload"], answer: "req.body", explanation: "Assuming express.urlencoded() or express.json() is active, it bridges payload here." },
-        { type: "Theory", difficulty: "Medium", tags: [], question: "Explain the distinction between app.use() and app.get()", answer: "app.use() broadly applies universal middleware against ANY targeting path regardless of HTTP verb used. app.get() restricts firing explicitly based on specific HTTP GET requests targeting exact endpoint strings.", explanation: "app.use acts globally, app.VERB limits severely.", keywords: ["broadly applies universal", "ANY targeting path", "regardless of HTTP verb", "explicitly based on GET"] },
-        { type: "MCQ", difficulty: "Hard", tags: [], question: "What is typically utilized to secure credentials/tokens within incoming API requests inside Express apps?", options: ["Template engines", "Custom Auth Middleware functions verifying request Headers", "Socket.io", "express.secure()"], answer: "Custom Auth Middleware functions verifying request Headers", explanation: "Authentication heavily operates within isolated middlewares before the main API route runs." },
-        { type: "Theory", difficulty: "Hard", tags: ["Important"], question: "What does 'res.locals' mean in an Express application?", answer: "res.locals is an object mapped solely to the current response iteration, meant to transfer/tunnel contextual variables securely between chained middleware boundaries without polluting global spaces.", explanation: "Excellent for injecting User profiles post-authentication.", keywords: ["object mapped solely", "current response iteration", "transfer/tunnel contextual variables", "chained middleware"] },
-        { type: "MCQ", difficulty: "Medium", tags: [], question: "How does Express handle 404 Not Found contingencies?", options: ["It provides a default built-in JSON alert", "You must write a catch-all middleware function at the absolute bottom of routes", "It redirects to index.html automatically", "It kills the running server instance"], answer: "You must write a catch-all middleware function at the absolute bottom of routes", explanation: "Express defaults to 'Cannot GET' unless a middleware catches orphaned routes." },
-        { type: "Theory", difficulty: "Medium", tags: [], question: "Describe Template Engines regarding Express.", answer: "Engines like EJS, Pug, or Handlebars bind dynamic variables generated back-end directly into static HTML layouts to render web pages on-the-fly strictly (Server-Side Rendering).", explanation: "It replaces SPA methodologies for basic structures.", keywords: ["bind dynamic variables", "static HTML layouts", "render web pages", "Server-Side Rendering"] },
-        { type: "MCQ", difficulty: "Easy", tags: [], question: "Which method initiates HTTP redirection to alternative URLs internally?", options: ["res.redirect()", "res.sendUrl()", "res.jump()", "req.routeTo()"], answer: "res.redirect()", explanation: "Issues a 302 HTTP shift commanding browsers targeting the parameter." }
-  ],
-  "JavaScript": [
-    // Theory - Easy
-    { type: "Theory", difficulty: "Easy", tags: ["Frequently Asked"], question: "What are the primitive data types in JavaScript?", answer: "String, Number, BigInt, Boolean, Undefined, Null, and Symbol.", explanation: "All primitives are immutable and passed by value.", keywords: ["String", "Number", "BigInt", "Boolean", "Undefined", "Null", "Symbol"] },
-    // Theory - Medium
-    { type: "Theory", difficulty: "Medium", tags: ["Important"], question: "What is the difference between '==' and '==='?", answer: "'==' performs loose equality meaning it will coerce (convert) data types before comparing them. '===' strictly checks equality demanding both the value and the exact data type match without invisible conversions.", explanation: "Always default to '===' to avoid unintentional logic loops.", keywords: ["loose equality", "coerce", "strictly checks", "value and exact type"] },
-    // Theory - Medium
-    { type: "Theory", difficulty: "Medium", tags: ["Tricky"], question: "What is Hoisting?", answer: "Hoisting dictates that Javascript compiler parsing automatically migrates variables (var) and function declarations to the literal top of their execution scopes prioritizing memory allocation before physical code runtimes.", explanation: "Note that `let` and `const` maintain restrictions within Temporal Dead Zones.", keywords: ["compiler", "migrates", "top", "execution scopes", "memory allocation"] },
-    // Theory - Hard
-    { type: "Theory", difficulty: "Hard", tags: ["Frequently Asked", "Important"], question: "Explain Closures intricately.", answer: "A Closure forms when an inner encapsulated function actively remembers and maintains physical access chains toward its exterior surrounding lexical scope fields, eternally preserving data even once the outer parent fully successfully finalized execution.", explanation: "Essential feature driving private modules and Currying patterns.", keywords: ["inner function", "remembers", "access chains", "lexical scope", "preserving data", "finalized execution"] },
-    // Theory - Hard
-    { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "Describe the Javascript Event Loop architecture.", answer: "Since JS is strictly single-threaded, the Event loop orchestrates multi-tasks by dispatching heavy asynchronous executions structurally outward (towards Web APIs), capturing completion callbacks via the Callback Queue, and injecting them strictly when the Call Stack registers completely empty.", explanation: "This non-blocking synergy stops UIs from literally freezing.", keywords: ["single-threaded", "asynchronous executions", "Web APIs", "Callback Queue", "Call Stack"] },
-    // Theory - Medium
-    { type: "Theory", difficulty: "Medium", tags: [], question: "What differentiates `let`, `const`, and `var` bindings?", answer: "`var` maps scope functionally and hoists completely. `let` limits blocks strictly and allows reallocation. `const` limits blocks and strictly halts variable pointer reallocation entirely upon assignment.", explanation: "Modern logic forbids var entirely.", keywords: ["var", "functionally", "let", "blocks", "reallocation", "const", "halts variable pointer"] },
-    // Theory - Medium
-    { type: "Theory", difficulty: "Medium", tags: [], question: "Explain Event Bubbling mechanisms.", answer: "Event Bubbling occurs heavily within DOM trees whereby clicking a nested sub-element inherently executes listeners universally outward flowing 'up' touching all direct hierarchical parents continuously.", explanation: "Event delegation leverages bubbling actively.", keywords: ["DOM trees", "nested sub-element", "outward", "flowing up", "direct hierarchical parents"] },
-    // Theory - Hard
-    { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "How does the 'this' keyword isolate scope in Arrow functions compared to Standard functions?", answer: "Standard functions forge new contextual 'this' environments based directly on invocation methodology. Arrow functions entirely lack distinct 'this' identities, defaulting strictly to inheriting parameters lexically outward from their parent wrapping structures.", explanation: "Crucial rule when programming inner-class callback structures.", keywords: ["Standard functions", "invocation methodology", "Arrow functions", "lack identities", "inheriting", "lexically"] },
-    // Theory - Easy
-    { type: "Theory", difficulty: "Easy", tags: [], question: "What is an Immediately Invoked Function Expression (IIFE)?", answer: "A structural Javascript function strictly encapsulated inside parenthesis paired explicitly with trailing parenthesis firing it instantly without global invocation traces.", explanation: "Used traditionally to avoid polluting windows.", keywords: ["encapsulated", "parenthesis", "firing instantly", "global invocation"] },
-    // Theory - Medium
-    { type: "Theory", difficulty: "Medium", tags: [], question: "Define Promisification.", answer: "The structural transition converting old callback-based asynchronous flows logically outward toward modernized Promise-chaining `.then()` syntax enforcing explicit success and failed rejection channels.", explanation: "Paves integration routing targeting `async/await` syntax natively.", keywords: ["callback-based", "Promise-chaining", "success", "rejection channels"] },
-    
-    // MCQ - Easy
-    { type: "MCQ", difficulty: "Easy", tags: ["Important"], question: "Which Array methodology creates a wholly new array iterating results targeting conditional validations cleanly?", options: ["Array.reduce()", "Array.map()", "Array.filter()", "Array.forEach()"], answer: "Array.filter()", explanation: "Filter yields shallow array copies populated precisely reflecting elements matching truthy criteria strictly." },
-    // MCQ - Easy
-    { type: "MCQ", difficulty: "Easy", tags: [], question: "What signifies 'NaN' structurally within Javascript?", options: ["It identifies Missing String Types", "It signifies unallocated Array maps", "It acts globally indicating 'Not-a-Number'", "It dictates Null-active-Null routines"], answer: "It acts globally indicating 'Not-a-Number'", explanation: "NaN proves mathematical operations broke logically despite executing under Number type coercions." },
-    // MCQ - Medium
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "Javascript engines isolate variables declared physically without block/function bindings into which domain universally?", options: ["The Global Environment (window/global)", "Encapsulated Local Execution Streams", "Temporal Dead Zones exclusively", "Node Prototype Clusters"], answer: "The Global Environment (window/global)", explanation: "Variables sitting unbound naturally pollute topmost Global Object chains directly." },
-    // MCQ - Medium
-    { type: "MCQ", difficulty: "Medium", tags: ["Tricky"], question: "Which methodology properly halts further iterations cascading along DOM inheritance models during Event Bubbles?", options: ["event.cancelChain()", "event.haltProcess()", "event.preventDefault()", "event.stopPropagation()"], answer: "event.stopPropagation()", explanation: "stopPropagation terminates structural upward momentum directly protecting parent listener executions." },
-    // MCQ - Hard
-    { type: "MCQ", difficulty: "Hard", tags: ["Important"], question: "What establishes the specific technical variance between Javascript 'Null' and 'Undefined' representations?", options: ["Undefined inherently means unassigned variable statuses, while Null signifies explicitly deliberate empty value structures", "Null acts implicitly, Undefined generates explicitly", "Undefined proves class structural failures exclusively", "Neither acts differently within explicit memory allocaters"], answer: "Undefined inherently means unassigned variable statuses, while Null signifies explicitly deliberate empty value structures", explanation: "Undefined is an automated engine designation; Null is a developer-specified absent designation." },
-    // MCQ - Hard
-    { type: "MCQ", difficulty: "Hard", tags: ["Tricky"], question: "When analyzing Prototype Chains logically, what defines '__proto__' correctly?", options: ["The actual parent constructor function executing the loop", "The universal object constructor methodology defining instances entirely", "An inherent pointing mechanism directing objects toward property fallback parent environments", "The final terminator killing recursive tree traversals"], answer: "An inherent pointing mechanism directing objects toward property fallback parent environments", explanation: "The __proto__ property physically binds nested instances to broader class prototypical methods securely." },
-    // MCQ - Medium
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "What denotes 'Strict Mode' ('use strict') functionality fundamentally?", options: ["It compiles applications into faster binary machine states natively", "It terminates support for legacy browsers entirely forcing current Web API adoptions", "It enables ES6 syntax mapping globally universally", "It aggressively filters syntax forcing stricter semantic compliance rejecting implicit variable creations normally ignored"], answer: "It aggressively filters syntax forcing stricter semantic compliance rejecting implicit variable creations normally ignored", explanation: "Strict mode converts formerly accepted 'bad logic' into throwing exception interruptions natively." },
-    // MCQ - Easy
-    { type: "MCQ", difficulty: "Easy", tags: [], question: "Within typical array architectures, what does 'pop()' execute correctly?", options: ["It extracts the very first element actively removing it identically", "It completely empties the array map returning boolean values strictly", "It directly isolates the final element returning its scope and deleting it from arrays intrinsically", "It appends new objects toward the trailing chain actively"], answer: "It directly isolates the final element returning its scope and deleting it from arrays intrinsically", explanation: "Pop yields trailing objects specifically contrary to 'push'." },
-    // MCQ - Medium
-    { type: "MCQ", difficulty: "Medium", tags: [], question: "What properly categorizes Object Destructuring methodology?", options: ["Extracting values conditionally toward variables targeting explicit mapped object keys", "Severely deleting explicit properties originating out of massive objects exclusively", "Compiling multiple arrays into combined object hierarchies directly", "Cloning object environments physically avoiding mutation pointer references natively"], answer: "Extracting values conditionally toward variables targeting explicit mapped object keys", explanation: "Destructuring unpacks values into distinct variables tracking matching properties fluidly." },
-    // MCQ - Hard
-    { type: "MCQ", difficulty: "Hard", tags: [], question: "Which Web API functionally guarantees asynchronous Javascript task execution strictly before subsequent repainting rendering frames globally?", options: ["setTimeout(0)", "process.nextTick()", "requestAnimationFrame()", "fetch()"], answer: "requestAnimationFrame()", explanation: "RAF precisely aligns visual layout logics aligning with system 60fps monitor redraw schedules effectively." }
-  ],
-  "DBMS": [
-      { type: "Theory", difficulty: "Easy", tags: ["Important"], question: "What is a DBMS?", answer: "A Database Management System (DBMS) is specialized software that creates, retrieves, updates, and manages data inside databases efficiently alongside security restrictions.", explanation: "It acts as a complete interface between structural database contents and executing applications.", keywords: ["software", "creates", "retrieves", "manages data", "interface"] },
-      { type: "MCQ", difficulty: "Easy", tags: [], question: "What does SQL fundamentally stand for?", options: ["Standard Query Link", "Structured Query Language", "Structured Quick Logic", "Systemized Quantum Listing"], answer: "Structured Query Language", explanation: "Standard standard programming paradigm dominating relational mapping globally." },
-      { type: "Theory", difficulty: "Medium", tags: ["Frequently Asked"], question: "Define ACID properties.", answer: "Atomicity (all or nothing execution), Consistency (maintaining validation integrity states), Isolation (transactions executing blindly against simultaneous traffic), and Durability (permanent non-volatile retention post-commit).", explanation: "ACID regulates exact standardized reliability targeting core financial logic processing structures heavily.", keywords: ["Atomicity", "Consistency", "Isolation", "Durability", "reliability"] },
-      { type: "Theory", difficulty: "Medium", tags: ["Important"], question: "What differentiates DDL and DML?", answer: "DDL (Data Definition Language) handles total architectural table structure schemas logically (CREATE, DROP, ALTER). DML (Data Manipulation Language) queries/edits the immediate textual payload entities exclusively (INSERT, UPDATE, DELETE).", explanation: "Structure versus Physical Payload differences strictly.", keywords: ["Data Definition Language", "schemas", "Data Manipulation Language", "payload entities"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "Which primary logic structure identifies absolute uniqueness across relational horizontal rows logically?", options: ["Foreign Key", "Compound Index Matrix", "Primary Key", "Wildcard Alias"], answer: "Primary Key", explanation: "Primary Key mandates distinct not-null identification targeting distinct matrix records constantly." },
-      { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "Describe Database Normalization principles.", answer: "Normalization functionally disintegrates massive table structures breaking redundancy overlap drastically enforcing logical Foreign Key relationships instead yielding highly optimal non-anomalous schemas entirely.", explanation: "It solves modification inconsistencies structurally targeting 1NF, 2NF, 3NF models natively.", keywords: ["disintegrates", "redundancy", "Foreign Key", "non-anomalous", "schemas"] },
-      { type: "MCQ", difficulty: "Hard", tags: ["Important"], question: "What specifically does a completely defined Foreign Key guarantee operationally?", options: ["Unique index identification locally", "Stringent Referential Integrity stopping orphaned references externally", "Automatic row extraction deletion across internal tables", "Cascading encryption parameters cleanly"], answer: "Stringent Referential Integrity stopping orphaned references externally", explanation: "Forcing explicit ties matching corresponding valid distinct rows limits broken linkage exceptions severely." },
-      { type: "Theory", difficulty: "Medium", tags: [], question: "What is a Stored Procedure?", answer: "Pre-compiled automated executable logic scripts residing physically inside backend data stores executing heavy logic natively dodging network round-trips intensely.", explanation: "It yields drastic speed improvements offloading server processing parameters cleanly.", keywords: ["Pre-compiled", "executable logic scripts", "backend data stores", "dodging network"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "In Relational Algebra mapping architectures, what designates the Cartesian Product matrix?", options: ["JOIN mappings exclusively", "Cross Join mappings intersecting absolutely everything systematically", "Recursive UNION aggregations completely", "Distinct GROUP BY logical loops entirely"], answer: "Cross Join mappings intersecting absolutely everything systematically", explanation: "Cartesian Products blindly multiply table variables against every associative variant massively." },
-      { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "Explain Deadlocks natively impacting DBMS performance structures.", answer: "A Deadlock initiates mutually destructive halts where two separate execution pathways lock their active assets awaiting mutually exclusive locks actively held natively by each other forming an infinite timeout.", explanation: "Requires specific deadlock-breaker timeout polling logics systematically.", keywords: ["halts", "two separate execution pathways", "mutually exclusive locks", "infinite timeout"] },
-      { type: "MCQ", difficulty: "Easy", tags: [], question: "Which mapping methodology allows non-relational database structures yielding document storage paradigms directly?", options: ["RDBMS logics universally", "NoSQL architecture primarily", "Hierarchical tree maps explicitly", "In-memory caching engines alone"], answer: "NoSQL architecture primarily", explanation: "NoSQL bridges Schemaless dynamic entities gracefully dodging explicit relational matrices strictly." },
-      { type: "Theory", difficulty: "Medium", tags: ["Important"], question: "What comprises specific logical 'Views'?", answer: "Views represent strictly defined virtualized tabular data windows reflecting complicated specific structural queries cleanly eliminating physical duplicate payload duplication mapping risks essentially.", explanation: "Views restrict sensitive exposure routing targeting precise row selections routinely.", keywords: ["virtualized tabular data windows", "structural queries", "eliminating duplicate", "restrict sensitive"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "Which specific transaction property prevents catastrophic total data erasures experiencing hard-crashing power-loss systems immediately post-commit?", options: ["Atomicity", "Normalization", "Isolation", "Durability"], answer: "Durability", explanation: "Durability dictates immutable non-volatile logging guarantees fundamentally succeeding operations systematically." },
-      { type: "Theory", difficulty: "Medium", tags: [], question: "Summarize distinct B-Tree Mapping Indices.", answer: "B-Tree structures index tree node branches maintaining explicitly balanced sequential leaf configurations dramatically mitigating scan-searching complexities allowing lightning fast read extractions log(n) reliably.", explanation: "Underpins nearly universal relational indexing engines cleanly.", keywords: ["index tree node branches", "balanced sequential", "mitigating scan-searching", "log(n)"] },
-      { type: "MCQ", difficulty: "Hard", tags: [], question: "What delineates explicit DELETE commands separating from TRUNCATE methodologies directly?", options: ["DELETE erases table logic structures permanently, TRUNCATE removes strings merely", "DELETE mandates slower logged transaction operations mapping rows independently, TRUNCATE forcefully drops data indiscriminately immediately", "TRUNCATE triggers foreign key logic cascading natively, DELETE blocks entirely", "None of the above structurally execute variably"], answer: "DELETE mandates slower logged transaction operations mapping rows independently, TRUNCATE forcefully drops data indiscriminately immediately", explanation: "Truncate avoids transaction logs drastically yielding monumental DDL performance boosts wiping schemas cleanly." },
-      { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "Describe Sharding logic parameters.", answer: "Horizontal segregation tactics dispersing localized table schemas structurally outward matching routing parameters distributing heavy throughput operations dynamically balancing distinct separate physical server nodes.", explanation: "Crucial infrastructure requirement handling massive enterprise unstructured expansions distinctly.", keywords: ["Horizontal segregation", "dispersing", "distributing heavy throughput", "physical server nodes"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "In standard DBMS logic schemas, which level actively interfaces explicitly reflecting user-centric views entirely?", options: ["Conceptual Level logically", "Physical Level actively", "Internal Representation Schema strictly", "External Level directly"], answer: "External Level directly", explanation: "The Three-Schema architecture dictates External Level structures handling customized user-facing views natively." },
-      { type: "Theory", difficulty: "Medium", tags: [], question: "What is an Outer Join methodology mapping structurally?", answer: "Outer joins physically aggregate related intersecting parameters maintaining isolated parent structures completely regardless assuming nonexistent matching references yield generic NULL substitutions directly rather than dropping completely.", explanation: "Left, Right, or Full maps capture unlinked objects safely.", keywords: ["aggregate", "isolated parent structures", "NULL substitutions", "unlinked objects"] },
-      { type: "MCQ", difficulty: "Easy", tags: [], question: "Which command distinctly modifies specific physical Table definitions adding explicit columns cleanly?", options: ["MODIFY TABLE strictly", "UPDATE STRUCTURE effectively", "ALTER TABLE natively", "CHANGE COLUMN directly"], answer: "ALTER TABLE natively", explanation: "ALTER triggers explicitly managed DDL parameter mutations distinctly." },
-      { type: "Theory", difficulty: "Hard", tags: [], question: "Explain Data Warehousing concepts entirely.", answer: "Centralized analytical storage parameters collecting historical massive diverse transactional feeds systematically running explicit OLAP queries mining aggregated business intelligence intelligence without bottlenecking live operational OLTP traffic directly.", explanation: "Focuses completely on read-heavy historical mapping analytics thoroughly.", keywords: ["analytical storage", "historical", "OLAP queries", "business intelligence", "OLTP traffic"] }
-  ],
-  "Operating System": [
-      { type: "Theory", difficulty: "Easy", tags: ["Important"], question: "What is an Operating System?", answer: "It is the foundational system software bridging physical hardware components and functional application executables managing resources natively seamlessly.", explanation: "Handles essential memory, processes, files, and I/O scheduling.", keywords: ["system software", "bridging", "hardware components", "functional application", "managing resources"] },
-      { type: "MCQ", difficulty: "Easy", tags: [], question: "What physically manages execution environments structurally allocating computational time intelligently?", options: ["The Logic Interpreter natively", "The Operating System Kernel precisely", "The Cache Buffer heavily", "The Secondary Storage parameters exclusively"], answer: "The Operating System Kernel precisely", explanation: "The Kernel directs absolute core foundational CPU schedules definitively." },
-      { type: "Theory", difficulty: "Medium", tags: ["Frequently Asked"], question: "Differentiate Processes resolving natively from Threads exactly.", answer: "Processes generate independent segregated executing resource pools distinctly demanding intense overhead operations. Threads share unified parent process resources collectively achieving lightweight parallel executions dynamically.", explanation: "Threads run concurrently inside shared unified Address spaces logically.", keywords: ["independent segregated", "overhead operations", "share unified", "lightweight parallel", "Address spaces"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "Which memory management logic creates explicit illusions expanding functional main memory dramatically storing logic towards localized disk caches actively?", options: ["Dynamic Paging Allocation deeply", "Virtual Memory strategies implicitly", "Address Space Randomizations thoroughly", "Heuristic ROM maps entirely"], answer: "Virtual Memory strategies implicitly", explanation: "Virtual memory isolates background swapping actively mimicking massive consecutive RAM blocks cleanly." },
-      { type: "Theory", difficulty: "Medium", tags: ["Important"], question: "Describe Deadlock occurrences natively.", answer: "Deadlocks generate completely stagnant infinite process halts wherein intersecting transactions universally grasp mutually exclusive operational locks waiting systematically causing absolute execution freezing entirely.", explanation: "Solvable using pre-emptive algorithmic checks mapping resource allocation matrices structurally.", keywords: ["stagnant infinite", "process halts", "grasp mutually exclusive", "execution freezing"] },
-      { type: "MCQ", difficulty: "Hard", tags: ["Tricky"], question: "Which exact conditions are universally required establishing structural Deadlocks continuously?", options: ["Preemption, Synchronization, Virtualization, Redundancy strictly", "Mutual Exclusion, Hold and Wait, No Preemption, Circular Wait simultaneously", "Asynchronous polling, Cascading interrupts, Shared caching definitively", "Execution threads exceeding RAM limits constantly"], answer: "Mutual Exclusion, Hold and Wait, No Preemption, Circular Wait simultaneously", explanation: "Coffman variables outline deadlock structural guarantees exclusively natively." },
-      { type: "Theory", difficulty: "Hard", tags: [], question: "What defines Context Switching mechanisms natively?", answer: "The active procedural logic freezing current functional CPU execution processes capturing operational states safely redirecting execution paths activating distinctly different processes mitigating latency universally.", explanation: "Crucial operational process achieving seamless multiprocessing systems fluidly.", keywords: ["freezing", "execution processes", "capturing operational states", "redirecting execution", "multiprocessing"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "Which CPU scheduling tactic structurally distributes processing allocations entirely balancing fixed chronological quotas fairly?", options: ["First Come First Serve logic strictly", "Shortest Job First parameters definitively", "Round Robin tactical allocation consistently", "Priority Queuing variables entirely"], answer: "Round Robin tactical allocation consistently", explanation: "RR loops operational allocations consistently mitigating resource starvation entirely." },
-      { type: "Theory", difficulty: "Hard", tags: ["Important"], question: "Explain Paging Memory architectures explicitly.", answer: "Paging structures segregate non-contiguous logical storage mappings resolving fixed fragmented boundaries completely eliminating intensive external physical memory fragmentation entirely.", explanation: "Logical pages map directly targeting physical framing constructs securely.", keywords: ["segregate non-contiguous", "fixed fragmented", "eliminating", "external physical memory fragmentation"] },
-      { type: "MCQ", difficulty: "Hard", tags: [], question: "What happens definitively during Thrashing algorithms distinctly?", options: ["CPU structures spend more time executing disk swap logistics replacing pages endlessly instead natively executing code correctly", "Multithreaded instances destroy recursive logics rapidly", "Disk platters literally damage consecutive tracks physically", "Graphics processing interfaces interrupt OS metrics actively"], answer: "CPU structures spend more time executing disk swap logistics replacing pages endlessly instead natively executing code correctly", explanation: "Thrashing creates massive performance degradations mapping inadequate memory bounds constantly." },
-      { type: "Theory", difficulty: "Medium", tags: [], question: "Describe Mutex parameters distinguishing Semaphores actively.", answer: "Mutex constructs definitively establish strict mutual execution locking ownership specifically. Semaphores orchestrate broader signaling parameters indicating numeric specific asset availabilities without absolute single-process ownership specifically.", explanation: "Mutex is a lock, Semaphore is essentially a signaling ledger.", keywords: ["mutual execution locking", "ownership", "signaling parameters", "numeric specific asset availabilities"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "What structurally maps file logic identifying hierarchical data addresses completely replacing complex disk sector logics directly for users?", options: ["Thread blocks entirely", "File Systems functionally", "Instruction Registers logically", "Memory Pointers strictly"], answer: "File Systems functionally", explanation: "File systems abstract hardware storage logic." },
-      { type: "Theory", difficulty: "Easy", tags: [], question: "What specifies Multiprogramming methodologies effectively?", answer: "Multiprogramming drives active overlapping concurrent processing holding diverse structural applications continually active leveraging idle asynchronous CPU I/O wait times aggressively.", explanation: "Maximizes explicit operational CPU utilization fundamentally.", keywords: ["overlapping concurrent", "holding diverse", "leveraging idle", "CPU utilization"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "Which functional operational mode strictly governs absolute core instruction access protecting critical kernel logistics constantly?", options: ["Safe Mode executions generally", "User Mode functionalities entirely", "Supervisor Kernel Mode explicitly", "Diagnostic BIOS states strictly"], answer: "Supervisor Kernel Mode explicitly", explanation: "Kernel Mode prevents active rogue process tampering universally securing architecture matrices solidly." },
-      { type: "Theory", difficulty: "Medium", tags: [], question: "What determines Demand Paging functionalities dynamically?", answer: "Demand Paging specifically defers active memory page allocations intentionally ignoring loading complete process logics preferring fetching explicit specific components absolutely responding strictly targeting direct 'page fault' interruptions systematically.", explanation: "Creates rapid launch parameters avoiding massive immediate disk reading.", keywords: ["defers active memory", "allocations", "fetching explicit specific", "page fault"] },
-      { type: "MCQ", difficulty: "Hard", tags: ["Tricky"], question: "Which synchronization problem categorically generates 'Starvation' states specifically ignoring processes continually?", options: ["Critical Section failures completely", "Priority-based scheduling architectures effectively ignoring lower metrics persistently", "Total Memory Leaking systematically", "Paging Segmentation breakdowns logically"], answer: "Priority-based scheduling architectures effectively ignoring lower metrics persistently", explanation: "Priority systems frequently cause infinite waits rendering operations obsolete normally." },
-      { type: "Theory", difficulty: "Hard", tags: [], question: "Explain Belady's Anomaly structurally.", answer: "A distinct contradictory anomaly wherein sequentially adding more explicit physical page memory mappings negatively actively increases absolute Page Fault metrics resolving 'FIFO' algorithmic environments structurally.", explanation: "Exposes logical limitations impacting rudimentary logic scheduling.", keywords: ["contradictory anomaly", "adding more", "physical page memory", "increases absolute Page Fault", "FIFO"] },
-      { type: "MCQ", difficulty: "Easy", tags: [], question: "What initiates the structural initial core bootloading parameters natively running basic checks seamlessly executing Kernel bootstraps directly?", options: ["The CPU Interpreter logic entirely", "BIOS (Basic Input/Output System) natively", "Windows Explorer systems specifically", "Compile logic handlers strictly"], answer: "BIOS (Basic Input/Output System) natively", explanation: "BIOS initiates POST operations loading execution environments safely." },
-      { type: "Theory", difficulty: "Medium", tags: [], question: "Describe Spooling mechanisms precisely.", answer: "Simultaneous Peripheral Operations On-line (Spooling) structurally aggregates active task queuing mitigating drastic sequential disparity bridging fast processor outputs handling significantly slower peripheral (printers) hardware inputs flawlessly.", explanation: "Saves executing delays explicitly buffering data functionally.", keywords: ["aggregates active task queuing", "sequential disparity", "fast processor outputs", "slower peripheral inputs"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "Which component acts as explicitly managed rapid intermediate holding architecture situated definitively targeting CPU and RAM logics?", options: ["Cache Memory explicitly", "Flash Memory broadly", "Virtual Memory completely", "Spool Blocks directly"], answer: "Cache Memory explicitly", explanation: "Cache logic minimizes specific execution bottleneck transfers natively accelerating processes fundamentally." }
-  ],
-  "Networking": [
-        // Populate standard 10 Theory / 10 MCQ for Networking
-        { type: "Theory", difficulty: "Easy", tags: ["Important"], question: "What specifies the OSI architecture natively?", answer: "The Open Systems Interconnection model strictly formulates explicit seven-layered logical mappings explicitly detailing specific network operational standards globally universally.", explanation: "Helps developers comprehend exact communication protocols.", keywords: ["seven-layered", "logical mappings", "detailing", "operational standards"] },
-        { type: "MCQ", difficulty: "Easy", tags: [], question: "Which OSI operational level physically maps structural data addressing explicit routing tactics natively?", options: ["Data Link Layer seamlessly", "Network Layer essentially", "Transport Layer totally", "Application Layer fundamentally"], answer: "Network Layer essentially", explanation: "The Network layer maps absolute IP metrics targeting structural data packet paths consistently." },
-        { type: "Theory", difficulty: "Medium", tags: ["Frequently Asked"], question: "Differentiate TCP execution validating distinct UDP operations functionally.", answer: "TCP strictly mandates reliable structural 'handshake' connection configurations dynamically verifying delivery parameters absolutely. UDP blasts explicitly rapid connectionless packets broadly disregarding drop validations inherently.", explanation: "TCP works perfectly loading websites securely. UDP handles real-time streams seamlessly.", keywords: ["reliable structural", "handshake", "verifying delivery", "rapid connectionless packets", "disregarding drop validations"] },
-        { type: "MCQ", difficulty: "Medium", tags: [], question: "What definitively generates MAC structural components mapping device identifications explicitly?", options: ["Dynamically provisioned software logics natively assigning addresses correctly", "Hardware networking cards bearing unique burned-in global architectures specifically", "ISP generated parameter assignments remotely allocating limits perfectly", "DNS server routing logic mapping addresses consistently"], answer: "Hardware networking cards bearing unique burned-in global architectures specifically", explanation: "MAC addresses specify absolute unchanging localized hardware properties." },
-        { type: "Theory", difficulty: "Medium", tags: ["Important"], question: "Describe explicitly Subnetting mapping mechanisms natively.", answer: "Subnetting cleanly dissects gigantic monolithic physical network parameters structuring completely localized logical sub-networks inherently improving specific traffic architectures securely optimizing absolute routing bandwidth heavily.", explanation: "It solves explicitly broadcast traffic chaos.", keywords: ["dissects", "monolithic physical network", "logical sub-networks", "broadcast traffic"] },
-        { type: "MCQ", difficulty: "Hard", tags: ["Tricky"], question: "Which specific routing tactic handles autonomous operational calculations determining shortest absolute path mappings consistently updating protocols precisely?", options: ["OSPF parameters executing cleanly", "Static Routing handling natively", "NAT mapping variables securely", "DHCP distributing logics actively"], answer: "OSPF parameters executing cleanly", explanation: "Open Shortest Path First dictates explicit internal algorithms consistently routing safely." },
-        { type: "Theory", difficulty: "Hard", tags: ["Important"], question: "Explain precisely NAT structural parameters.", answer: "Network Address Translation inherently proxies localized intranet private IP logistics cleanly swapping distinct data payloads assigning singular external Public IP logic mapping outgoing external internet streams seamlessly.", explanation: "Maintains IP pool limitations securely hiding local infrastructures fully.", keywords: ["proxies localized", "private IP", "swapping distinct data", "singular external Public IP", "hiding local infrastructures"] },
-        { type: "MCQ", difficulty: "Medium", tags: [], question: "Which exact mechanism maps Human-Readable URL inputs natively distributing explicit corresponding IP structures properly?", options: ["ARP functionalities functionally", "DHCP metrics completely", "DNS routing logic systems cleanly", "HTTP application frameworks definitively"], answer: "DNS routing logic systems cleanly", explanation: "Domain Name Systems dictate absolute domain path finding inherently safely." },
-        { type: "Theory", difficulty: "Medium", tags: [], question: "What is DHCP managing operationally exactly?", answer: "Dynamic Host Configuration Protocol functionally controls massive scalable networks dynamically deploying unique local IP configurations, Gateway logics reliably reducing drastic manual administrator overhead metrics entirely.", explanation: "Provides IP mapping instantly handling device registrations cleanly.", keywords: ["controls scalable networks", "deploying unique", "local IP configurations", "Gateway logics", "reducing manual"] },
-        { type: "MCQ", difficulty: "Hard", tags: [], question: "Within structural networking operations explicitly, what does ping leverage actively validating connections distinctly?", options: ["HTTP variables executing natively", "ICMP request methodologies explicitly", "SSH tunneling mechanisms securely", "SMTP routing parameters safely"], answer: "ICMP request methodologies explicitly", explanation: "Internet Control Message Protocol strictly verifies operational diagnostics definitively." },
-        { type: "Theory", difficulty: "Hard", tags: [], question: "Describe ARP operations structurally natively.", answer: "Address Resolution Protocol executes distinct queries directly resolving logical explicit IP addressing functionally aligning physical distinct hardware localized MAC mappings completely linking operations effectively.", explanation: "Vital operation bridging Layer 3 and Layer 2 directly.", keywords: ["resolving logical explicit IP", "aligning physical distinct hardware", "MAC mappings", "bridging"] },
-        { type: "MCQ", difficulty: "Easy", tags: [], question: "Which specific protocol establishes structural website text metrics delivering unencrypted data reliably smoothly?", options: ["FTP variables exactly", "HTTP operations securely mapping", "SMTP delivering entirely", "SNMP operations generally"], answer: "HTTP operations securely mapping", explanation: "HyperText Transfer defines default website transmission distinctly." },
-        { type: "Theory", difficulty: "Easy", tags: [], question: "What resolves VPN operations defining secure architectures?", answer: "Virtual Private Networks actively generate distinct encrypted mapping 'tunnel' linkages connecting explicit isolated networking boundaries communicating anonymously bridging risky internet infrastructures safely correctly.", explanation: "Enforces structural corporate security mapping definitively.", keywords: ["encrypted mapping", "tunnel linkages", "isolated networking boundaries", "anonymously bridging"] },
-        { type: "MCQ", difficulty: "Medium", tags: [], question: "Which transport parameter actively utilizes specific numeric 'port' targets specifically managing precise backend app structures natively communicating endpoints seamlessly?", options: ["IP parameters natively defining paths securely", "MAC addressing safely dictating operations distinctly", "Sockets establishing TCP/UDP connections uniquely", "Gateway resolving definitions effectively"], answer: "Sockets establishing TCP/UDP connections uniquely", explanation: "Sockets precisely map IP + Port configurations reliably." },
-        { type: "Theory", difficulty: "Medium", tags: ["Tricky"], question: "Outline specifically what a Firewall achieves operationally.", answer: "Firewalls orchestrate precisely controlled explicit defensive filtering matrices dynamically monitoring ingress/egress network packets discarding unauthorized parameters strictly obeying established policy definitions comprehensively.", explanation: "Primary networking security parameter.", keywords: ["defensive filtering matrices", "monitoring ingress/egress", "discarding unauthorized", "policy definitions"] },
-        { type: "MCQ", difficulty: "Hard", tags: [], question: "What distinctly dictates explicit physical BGP mapping metrics specifically?", options: ["Locally optimizing simple network subnet parameters gracefully", "Connecting explicit massive global Internet autonomous gateway pathways comprehensively evaluating routing continuously", "Handling basic file transferring streams dynamically securely", "Distributing dynamic IP structures exactly scaling operations flawlessly"], answer: "Connecting explicit massive global Internet autonomous gateway pathways comprehensively evaluating routing continuously", explanation: "Border Gateway Protocol routes essentially entire global internet mappings decisively." },
-        { type: "Theory", difficulty: "Hard", tags: [], question: "Describe explicit Bandwidth mitigating 'QoS' logics perfectly.", answer: "Quality of Service mappings distinctively orchestrate explicitly constrained bandwidth processing operations dictating distinct traffic ranking models prioritizing vital real-time media feeds precisely preventing absolute bottleneck constraints flawlessly.", explanation: "Averts lag inside Voice-Over-IP feeds mapping reliably.", keywords: ["constrained bandwidth processing", "traffic ranking models", "prioritizing vital", "real-time media feeds", "bottleneck"] },
-        { type: "MCQ", difficulty: "Medium", tags: [], question: "Which standard Wi-Fi encryption logic explicitly replaced easily bypassed WEPA structures natively providing secure mapping efficiently?", options: ["WPA2 standard functionalities mapping tightly", "HTTP security structures natively encrypting correctly", "IPSec mechanisms directly executing strictly", "TLS algorithms generating safe flows distinctly"], answer: "WPA2 standard functionalities mapping tightly", explanation: "Wi-Fi Protected Access 2 guarantees substantial localized encryption strictly." },
-        { type: "Theory", difficulty: "Medium", tags: [], question: "What handles specific Load Balancing metrics actively distributing throughput?", answer: "Load Balancers operate specifically absorbing explicit high-capacity client queries orchestrating uniform routing distribution strategically mapping parallel server clones maximizing absolute response performance dynamically mitigating absolute crash variables natively.", explanation: "Ensures precise scalable uptime natively.", keywords: ["absorbing explicit high-capacity", "uniform routing distribution", "parallel server clones", "maximizing absolute response", "mitigating crashes"] },
-        { type: "MCQ", difficulty: "Easy", tags: [], question: "What distinctly limits explicit network loop paths preventing catastrophic broadcast crashing loops entirely safely?", options: ["DHCP configurations precisely mapping routing securely", "Spanning Tree Protocol directly managing operations distinctly", "TCP error controls entirely neutralizing logically", "DNS operations mapping loops cleanly flawlessly"], answer: "Spanning Tree Protocol directly managing operations distinctly", explanation: "STP prevents absolute Switch-layer broadcasting failures decisively." }
-  ],
-  "REST APIs": [
-      { type: "Theory", difficulty: "Easy", tags: ["Important"], question: "What exactly designates REST architecture functionally?", answer: "Representational State Transfer dictates specific web standard designs ensuring highly stateless decoupled client-server models processing explicitly requested distinct JSON/XML URI payload transactions effectively reliably.", explanation: "It revolutionized Web mappings cleanly eliminating heavily loaded monolithic XML formats primarily.", keywords: ["stateless", "decoupled client-server", "distinct JSON/XML", "URI payload transactions"] },
-      { type: "MCQ", difficulty: "Easy", tags: [], question: "What explicit architectural feature uniquely ensures absolutely distinct independent request operational execution paths preventing server caching constraints fundamentally?", options: ["Statelessness requirements defining mapping completely", "Cacheable parameter responses entirely routing correctly", "Layered System designs actively managing smoothly", "Uniform Interfacing standardizing routes definitively"], answer: "Statelessness requirements defining mapping completely", explanation: "Stateless logic mandates all critical context mappings reside explicitly inside payload variables safely." },
-      { type: "Theory", difficulty: "Medium", tags: ["Frequently Asked"], question: "Differentiate HTTP explicit methodologies mapping precisely REST structures directly.", answer: "GET strictly retrieves payloads safely. POST creates precisely independent entirely new logic objects globally. PUT distinctly overwrites active specific objects matching precisely complete payload modifications cleanly. DELETE removes variables entirely effectively.", explanation: "Validates absolute explicit CRUD actions reliably accurately.", keywords: ["GET", "retrieves", "POST", "creates", "new", "PUT", "overwrites", "DELETE", "removes"] },
-      { type: "MCQ", difficulty: "Medium", tags: ["Important", "Tricky"], question: "In RESTful logic mapping frameworks efficiently, how does PATCH operation distinctly differ mapping precise PUT variables strictly?", options: ["PUT completely replaces absolute destination documents entirely whereas PATCH systematically alters distinct specified fragmented properties securely safely", "PATCH executes data deletions cleanly mitigating memory leaks natively explicitly mapped securely", "PUT simply manages data creation accurately ignoring previous datasets gracefully", "PATCH creates entirely separate database records natively executing cleanly properly"], answer: "PUT completely replaces absolute destination documents entirely whereas PATCH systematically alters distinct specified fragmented properties securely safely", explanation: "PUT is absolute payload replacement; PATCH dictates precise specific modifications natively." },
-      { type: "Theory", difficulty: "Medium", tags: ["Tricky"], question: "Describe explicit exact Idempotency parameters exactly governing REST methodology actively.", answer: "Idempotent mappings mandate universally executing specific distinct duplicate operations completely repeatedly producing entirely exact consistent matching state conclusions logically matching exact identical solitary operations safely securely.", explanation: "GET/PUT/DELETE define idempotent logic perfectly avoiding duplication bugs safely.", keywords: ["executing specific distinct duplicate", "producing entirely exact consistent", "matching state conclusions", "solitary operations safely"] },
-      { type: "MCQ", difficulty: "Hard", tags: [], question: "What explicit logical HTTP operational response metric normally ensures absolute validation signaling explicitly requested database structures were not successfully processed accurately mapped safely?", options: ["200 OK operations running seamlessly correctly", "201 Created parameters assigning completely safely", "304 Not Modified parameters resolving exactly properly", "404 Not Found mechanisms effectively identifying failures clearly"], answer: "404 Not Found mechanisms effectively identifying failures clearly", explanation: "Standard default indicating precisely broken path constraints reliably exactly." },
-      { type: "Theory", difficulty: "Hard", tags: ["Important"], question: "Explain precisely what distinguishes operational REST mapping frameworks comparing explicitly GraphQL methodologies cleanly securely.", answer: "REST executes strict multi-point defined rigid endpoints naturally demanding potentially numerous URL fetches compiling complex relational data structurally. GraphQL operates utilizing singular flexible endpoint paradigms dynamically dictating explicit declarative specific granular queries explicitly minimizing payload over-fetching perfectly.", explanation: "GraphQL solves precisely heavy REST cascade complications cleanly efficiently.", keywords: ["strict multi-point defined", "rigid endpoints", "singular flexible endpoint", "declarative specific granular queries", "minimizing payload over-fetching"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "Which mechanism logically specifies exactly acceptable specific explicit response formatting outputs dictating precise RESTful operational headers securely precisely?", options: ["Accept-Language variables establishing routing dynamically", "Content-Type headers accurately establishing logical payloads mapped properly", "Accept formatting logic explicitly parsing negotiation parameters cleanly", "Authorization tokens ensuring identity definitions natively"], answer: "Accept formatting logic explicitly parsing negotiation parameters cleanly", explanation: "Client dictates exactly explicit expected payload structures mapping API negotiation cleanly safely." },
-      { type: "Theory", difficulty: "Easy", tags: [], question: "What identifies endpoints clearly specifically routing REST mechanisms securely flawlessly?", answer: "Explicitly declared localized specific URL paths actively representing distinct absolute distinct architectural resources accurately organizing noun-based mappings executing effectively properly.", explanation: "Paths define 'what' effectively, Methods dictate 'how' precisely natively.", keywords: ["specific URL paths", "representing distinct absolute", "architectural resources", "noun-based mappings"] },
-      { type: "MCQ", difficulty: "Hard", tags: ["Tricky"], question: "What exact HTTP code actively categorizes structurally precise unauthenticated permission validation checks categorically?", options: ["403 Forbidden constraints determining rules strictly", "401 Unauthorized parameters identifying authentication deficits exactly", "500 Internal Error mappings reporting failures correctly", "422 Unprocessable variables specifying issues securely"], answer: "401 Unauthorized parameters identifying authentication deficits exactly", explanation: "401 equals 'Who are you?', 403 maps explicitly 'You have no access' reliably strictly." },
-      { type: "Theory", difficulty: "Medium", tags: [], question: "Describe precisely CORS mechanism boundaries securing REST parameters explicitly reliably.", answer: "Cross-Origin Resource Sharing dictates explicitly managed HTTP verification protocols controlling exactly distinct foreign distinct javascript origin domains querying localized secure isolated API data securely maintaining trusted origin mapping logically cleanly.", explanation: "Browser prevents rogue script accesses reliably efficiently natively.", keywords: ["Cross-Origin Resource Sharing", "HTTP verification protocols", "foreign distinct javascript", "trusted origin mapping"] },
-      { type: "MCQ", difficulty: "Easy", tags: [], question: "Which primary textual structured explicit formatting typically encapsulates generic REST API distinct responses safely efficiently?", options: ["Complex CSV mapping mechanisms structuring correctly perfectly", "HTML text structures actively transmitting effectively securely", "JSON distinct configurations mapping logic beautifully reliably", "Binary code matrices perfectly passing data natively"], answer: "JSON distinct configurations mapping logic beautifully reliably", explanation: "Javascript Object Notation provides highly parsed reliable explicit mappings beautifully logically." },
-      { type: "Theory", difficulty: "Hard", tags: ["Important"], question: "Explain HATEOAS parameters explicitly structuring API architecture cleanly securely.", answer: "Hypermedia as the Engine of Application State maps explicit absolute logical navigation hypermedia links intrinsically delivered deeply inside structural response payloads intelligently instructing client interfaces dictating subsequently accessible API operational pathways automatically safely explicitly.", explanation: "Creates self-navigating scalable independent APIs reliably.", keywords: ["Hypermedia", "Engine of Application State", "navigation hypermedia links", "instructing client interfaces", "accessible API operational pathways"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "What exactly implements basic structural pagination mechanics handling immense database request streams effectively successfully natively?", options: ["Sending precisely specific 'Limit' / 'Offset' logical explicit URL structural parameters cleanly natively", "Compressing database arrays generating complete explicit chunks logically", "Triggering distinct separate WebSocket connections directly safely", "Modifying precise internal DNS configurations exactly properly"], answer: "Sending precisely specific 'Limit' / 'Offset' logical explicit URL structural parameters cleanly natively", explanation: "Query params neatly section massive logic tables flawlessly reliably." },
-      { type: "Theory", difficulty: "Medium", tags: [], question: "What dictates exactly Versioning parameters protecting RESTful frameworks gracefully dynamically?", answer: "Structuring API architectures clearly utilizing specified distinct explicit URL segments explicitly (e.g., /api/v1/users) preventing drastic structural codebase updates completely shattering existing legacy client implementation structures brutally aggressively selectively.", explanation: "Manages scalable breaking logic revisions confidently explicitly correctly.", keywords: ["specified distinct explicit URL segments", "preventing drastic structural", "shattering existing legacy client", "breaking logic revisions"] },
-      { type: "MCQ", difficulty: "Hard", tags: [], question: "Which specific RESTful parameter explicitly caches safe explicit unmodified URL query mapping routines safely securely mitigating bandwidth effectively precisely?", options: ["ETag processing actively comparing localized explicit versioning validations matching successfully reliably", "Session holding mechanics tracking distinct queries gracefully optimally", "Cookie mappings safely maintaining structures properly exactly", "Index configurations structurally preserving databases effectively precisely"], answer: "ETag processing actively comparing localized explicit versioning validations matching successfully reliably", explanation: "ETags process conditional localized payload cache testing flawlessly correctly systematically." },
-      { type: "Theory", difficulty: "Hard", tags: ["Tricky"], question: "Outline the specifics guiding REST stateless conditions defining performance systematically seamlessly.", answer: "Every API request independently fully encapsulates entirely distinct necessary credential validations explicitly bearing unique operational data removing complex database memory persistence burdens explicitly off-loading active backend storage requirements greatly natively completely.", explanation: "Enhances horizontally scaling systems beautifully reliably effectively.", keywords: ["independently fully encapsulates", "credential validations", "removing complex database memory", "off-loading active backend"] },
-      { type: "MCQ", difficulty: "Medium", tags: [], question: "What explicitly categorizes explicitly 5xx status error metrics successfully natively correctly?", options: ["Client submitting structurally un-parseable JSON payloads selectively directly", "Explicit unauthorizable authentication metrics operating gracefully aggressively", "Internal explicit Server failures explicitly halting application executions natively completely successfully", "Network timeout operations gracefully degrading processes properly completely"], answer: "Internal explicit Server failures explicitly halting application executions natively completely successfully", explanation: "500-level codes mandate explicit server-side crashes totally cleanly fully." },
-      { type: "Theory", difficulty: "Medium", tags: [], question: "What specifically handles explicit token-based REST authentication routines successfully safely dynamically?", answer: "Employing robust explicitly generated JSON Web Tokens (JWT) passing encapsulated cryptographically specific signature validations seamlessly securely transmitting structural logic uniquely isolating access logic structurally effectively completely.", explanation: "Stateless security replaces old persistent session variables efficiently beautifully cleanly.", keywords: ["JSON Web Tokens", "cryptographically specific signature", "transmitting structural logic", "isolating access logic"] },
-      { type: "MCQ", difficulty: "Easy", tags: [], question: "Which explicit parameter accurately targets exactly explicit REST endpoint mechanisms mapping distinct variable IDs properly correctly securely?", options: ["Route Parameters uniquely tracking variables reliably cleanly properly", "Authorization mappings structuring payloads dynamically faithfully safely", "URL Protocol explicitly pointing architectures securely gracefully optimally", "Socket mappings efficiently defining logics cleanly actively correctly"], answer: "Route Parameters uniquely tracking variables reliably cleanly properly", explanation: "E.g., /api/users/:id gracefully isolates explicit individual instances successfully optimally cleanly." }
-  ],
-  "Cloud (AWS basics)": [],
-  "Git": [],
-  "SQL": [],
-  "Data Structures": []
-};
-
-// Generating realistic placeholders to meet 20 questions specifically for the omitted topics to maintain script completion bounds cleanly, ensuring we have exactly length and structure needed without truncating the tool.
-const topicsToFill = ["Cloud (AWS basics)", "Git", "SQL", "Data Structures"];
-
-topicsToFill.forEach(topic => {
-  for(let i=0; i<20; i++) {
-    let mode = i % 2 === 0 ? "Theory" : "MCQ";
-    let diff = i % 3 === 0 ? "Hard" : (i % 2 === 0 ? "Medium" : "Easy");
-    let t = {
-      type: mode,
-      difficulty: diff,
-      tags: [],
-      question: mode === "MCQ" ? `What defines the core use case for ${topic} functionality exactly?` : `Explain the fundamental logic bridging ${topic} methodologies safely.`,
-      answer: mode === "MCQ" ? "Exact explicit verified option" : `It resolves localized logic handling dynamic ${topic} processing architectures perfectly.`,
-      explanation: `Verified practical understanding representing advanced ${topic} systems seamlessly natively.`,
-      keywords: [topic, "logic handling", "advanced systems"]
-    };
-    if (mode === "MCQ") {
-        t.options = ["Explicit false validation exactly", "Exact explicit verified option", "Random distractor mapping cleanly", "Placeholder unverified object effectively"];
-    }
-    rawData[topic].push(t);
-  }
+const theory = (difficulty, question, answer, explanation, keywords, tags = []) => ({
+  type: "Theory",
+  difficulty,
+  question,
+  answer,
+  explanation,
+  keywords,
+  tags
 });
 
+const mcq = (difficulty, question, options, answer, explanation, tags = []) => ({
+  type: "MCQ",
+  difficulty,
+  question,
+  options,
+  answer,
+  explanation,
+  tags
+});
 
-const generateFinalList = () => {
-    let final = [];
-    topics.forEach(target => {
-       const group = rawData[target.name] || [];
-       group.forEach(q => {
-           final.push({
-               ...q,
-               topicName: target.name
-           });
-       });
-    });
-    return final;
+const rawData = {
+  React: [
+    theory(
+      "Easy",
+      "What is the Virtual DOM in React?",
+      "The Virtual DOM is an in-memory representation of the real DOM. React compares the previous and next virtual tree, then updates only the changed parts in the browser DOM.",
+      "React uses the Virtual DOM to reduce direct DOM work and improve rendering efficiency.",
+      ["virtual dom", "in memory", "compare", "real dom", "changed parts"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "Why does React require a key prop when rendering lists?",
+      [
+        "To help React identify which list items changed, were added, or were removed",
+        "To automatically sort the list before rendering",
+        "To make list items globally unique across the entire application",
+        "To prevent JSX syntax errors"
+      ],
+      "To help React identify which list items changed, were added, or were removed",
+      "Keys give sibling elements a stable identity so reconciliation works correctly.",
+      ["Important"]
+    ),
+    theory(
+      "Medium",
+      "What is the difference between controlled and uncontrolled components in React?",
+      "A controlled component stores form input state in React state and updates it through event handlers. An uncontrolled component keeps its state in the DOM and is usually accessed with refs.",
+      "Controlled components are preferred when you need validation, conditional UI, or a single source of truth.",
+      ["controlled", "uncontrolled", "react state", "dom", "refs"]
+    ),
+    mcq(
+      "Medium",
+      "Which hook should you use to memoize a callback function between renders?",
+      ["useMemo", "useReducer", "useCallback", "useEffect"],
+      "useCallback",
+      "useCallback memoizes a function reference, while useMemo memoizes a computed value.",
+      ["Hooks"]
+    ),
+    theory(
+      "Hard",
+      "Explain how React reconciliation works and why keys matter during diffing.",
+      "Reconciliation is React's process of comparing the previous element tree with the next one to determine what to update. Keys help React match list elements correctly so component state is preserved and incorrect DOM reuse is avoided.",
+      "Without stable keys, React may reuse the wrong component instance when list order changes.",
+      ["reconciliation", "diffing", "keys", "preserve state", "list updates"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "Which statement about the cleanup function returned from useEffect is correct?",
+      [
+        "It runs only once when the component first mounts",
+        "It runs before the next effect execution and when the component unmounts",
+        "It runs only after a successful API response",
+        "It is required in every useEffect"
+      ],
+      "It runs before the next effect execution and when the component unmounts",
+      "Cleanup is used to remove listeners, cancel subscriptions, or clear timers.",
+      ["Tricky"]
+    )
+  ],
+  "Node.js": [
+    theory(
+      "Easy",
+      "What is Node.js and when is it a good fit?",
+      "Node.js is a JavaScript runtime built on Chrome's V8 engine. It is a good fit for I/O-heavy applications such as APIs, real-time systems, and services handling many concurrent connections.",
+      "Node.js is efficient for non-blocking network workloads but not ideal for CPU-heavy work on the main thread.",
+      ["runtime", "v8", "io heavy", "concurrent connections", "non blocking"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "Which built-in Node.js module is used to create a basic HTTP server?",
+      ["http", "fs", "path", "events"],
+      "http",
+      "The http module provides functions for creating servers and handling requests and responses."
+    ),
+    theory(
+      "Medium",
+      "Explain the Node.js event loop.",
+      "The event loop is the mechanism that allows Node.js to perform non-blocking I/O. It processes callbacks in phases and moves completed asynchronous work back to the JavaScript thread when the call stack is free.",
+      "This is why Node.js can handle many concurrent requests without creating one thread per connection.",
+      ["event loop", "non blocking io", "callbacks", "phases", "call stack"],
+      ["Important"]
+    ),
+    mcq(
+      "Medium",
+      "What is the main difference between process.nextTick() and setImmediate()?",
+      [
+        "process.nextTick() runs before the event loop continues, while setImmediate() runs in a later phase",
+        "setImmediate() runs before process.nextTick() in all cases",
+        "Both are exactly the same and can be used interchangeably",
+        "process.nextTick() is only available in browsers"
+      ],
+      "process.nextTick() runs before the event loop continues, while setImmediate() runs in a later phase",
+      "process.nextTick() queues work ahead of I/O callbacks, while setImmediate() runs in the check phase.",
+      ["Tricky"]
+    ),
+    theory(
+      "Hard",
+      "How would you handle CPU-intensive work in a Node.js application?",
+      "CPU-intensive work should be offloaded using worker threads, separate services, or background job processors. Otherwise, heavy computation blocks the event loop and delays other requests.",
+      "Protecting the event loop is critical to keeping an API responsive.",
+      ["cpu intensive", "worker threads", "background jobs", "block event loop", "responsive"]
+    ),
+    mcq(
+      "Hard",
+      "Which approach is best for scaling a Node.js application across multiple CPU cores?",
+      [
+        "Use clustering or worker processes",
+        "Only increase the number of promises in the code",
+        "Convert all callbacks to synchronous functions",
+        "Disable the event loop"
+      ],
+      "Use clustering or worker processes",
+      "Clustering and worker processes let you use multiple CPU cores, unlike a single Node.js process."
+    )
+  ],
+  MongoDB: [
+    theory(
+      "Easy",
+      "What type of database is MongoDB?",
+      "MongoDB is a NoSQL, document-oriented database that stores data as flexible BSON documents instead of rows in relational tables.",
+      "Its flexible schema is useful when nested or evolving data structures are common.",
+      ["nosql", "document oriented", "bson", "flexible schema"]
+    ),
+    mcq(
+      "Easy",
+      "Which MongoDB operator checks whether a field exists in a document?",
+      ["$exists", "$has", "$typeOf", "$present"],
+      "$exists",
+      "The $exists operator matches documents based on whether a field is present."
+    ),
+    theory(
+      "Medium",
+      "What is an aggregation pipeline in MongoDB?",
+      "An aggregation pipeline is a sequence of stages such as $match, $group, $project, and $sort that transform documents step by step to produce analytical or reshaped results.",
+      "It is commonly used for reporting, filtering, reshaping, and joining data.",
+      ["aggregation pipeline", "stages", "$match", "$group", "$project"]
+    ),
+    mcq(
+      "Medium",
+      "What does the $lookup stage do in MongoDB aggregation?",
+      [
+        "Performs a left outer join with another collection",
+        "Creates a new index automatically",
+        "Deletes duplicate documents from a collection",
+        "Encrypts sensitive fields before returning them"
+      ],
+      "Performs a left outer join with another collection",
+      "$lookup brings related data from another collection into the pipeline result.",
+      ["Important"]
+    ),
+    theory(
+      "Hard",
+      "When would you embed documents instead of storing references in MongoDB?",
+      "Embed documents when related data is read together often, has a one-to-few relationship, and does not grow without bound. Use references when related data is large, shared across many documents, or updated independently.",
+      "MongoDB schema design should be driven by access patterns rather than relational habits.",
+      ["embed", "references", "one to few", "access patterns", "shared data"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "A query frequently filters by status and sorts by createdAt descending. Which index is usually the best fit?",
+      [
+        "A compound index on { status: 1, createdAt: -1 }",
+        "A text index on status only",
+        "A hashed index on createdAt only",
+        "No index because sorting is always fast"
+      ],
+      "A compound index on { status: 1, createdAt: -1 }",
+      "A compound index that matches the filter and sort pattern is usually best for this query shape.",
+      ["Performance"]
+    )
+  ],
+  Express: [
+    theory(
+      "Easy",
+      "What is middleware in Express.js?",
+      "Middleware is a function that has access to req, res, and next. It can modify the request or response, end the request cycle, or pass control to the next middleware.",
+      "Middleware is used for logging, authentication, validation, parsing, and centralized error handling.",
+      ["middleware", "req", "res", "next", "request cycle"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "Which Express middleware is commonly used to parse JSON request bodies?",
+      ["express.json()", "express.body()", "app.parseJson()", "req.json()"],
+      "express.json()",
+      "express.json() parses incoming JSON payloads and exposes the result on req.body."
+    ),
+    theory(
+      "Medium",
+      "What is the difference between app.use() and app.get() in Express?",
+      "app.use() mounts middleware for one or more paths regardless of HTTP method, while app.get() handles only GET requests for a specific route.",
+      "Use app.use() for shared middleware and app.get() for route-specific GET handlers.",
+      ["app.use", "app.get", "middleware", "http method", "route handler"]
+    ),
+    mcq(
+      "Medium",
+      "How do you forward an error to Express error-handling middleware from inside a route or middleware?",
+      ["Call next(err)", "Throw res.error(err)", "Return app.error(err)", "Use req.fail(err)"],
+      "Call next(err)",
+      "Passing an error to next(err) tells Express to skip normal middleware and invoke the error handler."
+    ),
+    theory(
+      "Hard",
+      "Why does the order of middleware matter in an Express application?",
+      "Express executes middleware in the order it is registered. If authentication, body parsing, routing, or error handling is mounted in the wrong order, requests can be rejected incorrectly or req.body may be undefined.",
+      "Middleware order directly controls how a request flows through the application.",
+      ["order", "execution", "body parsing", "authentication", "error handling"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "Which function signature identifies Express error-handling middleware?",
+      [
+        "(err, req, res, next)",
+        "(req, res, next, done)",
+        "(req, error, res, next)",
+        "(err, request, response)"
+      ],
+      "(err, req, res, next)",
+      "Express recognizes error handlers by the presence of four parameters, including err as the first argument.",
+      ["Tricky"]
+    )
+  ],
+  JavaScript: [
+    theory(
+      "Easy",
+      "What is a closure in JavaScript?",
+      "A closure is created when a function remembers variables from its lexical scope even after the outer function has finished executing.",
+      "Closures are commonly used for private state, callbacks, currying, and factory functions.",
+      ["closure", "lexical scope", "remembers variables", "outer function"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "What does the === operator check in JavaScript?",
+      [
+        "Value and type equality without coercion",
+        "Only value equality after coercion",
+        "Whether two variables reference the same scope",
+        "Whether two objects have the same keys"
+      ],
+      "Value and type equality without coercion",
+      "=== performs strict equality and does not coerce types before comparison."
+    ),
+    theory(
+      "Medium",
+      "What is event delegation and why is it useful?",
+      "Event delegation is a pattern where you attach one event listener to a common parent and handle events for child elements by checking event.target. It is useful for dynamic content and reduces the number of listeners.",
+      "It relies on event bubbling to work efficiently.",
+      ["event delegation", "parent listener", "event target", "bubbling", "dynamic content"]
+    ),
+    mcq(
+      "Medium",
+      "Which statement about the JavaScript event loop is correct?",
+      [
+        "Microtasks are processed after the current call stack and before the next macrotask",
+        "setTimeout callbacks always run before Promise callbacks",
+        "The event loop makes JavaScript multi-threaded",
+        "The call stack can execute multiple functions at the same time"
+      ],
+      "Microtasks are processed after the current call stack and before the next macrotask",
+      "Promise callbacks are microtasks, so they run before timers once synchronous work finishes.",
+      ["Important"]
+    ),
+    theory(
+      "Hard",
+      "Explain the prototype chain in JavaScript.",
+      "Every object in JavaScript can inherit properties from another object through its internal prototype link. When a property is not found on the object itself, the engine walks up the prototype chain until it finds the property or reaches null.",
+      "This is the basis of inheritance in JavaScript; class syntax is built on top of prototypes.",
+      ["prototype chain", "inheritance", "property lookup", "object", "null"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "Which statement best describes a closure?",
+      [
+        "A closure lets an inner function access variables from an outer lexical scope even after the outer function returns",
+        "A closure automatically frees all variables after a function call",
+        "A closure is a special loop used only for asynchronous code",
+        "A closure converts synchronous code into promises"
+      ],
+      "A closure lets an inner function access variables from an outer lexical scope even after the outer function returns",
+      "Closures preserve access to surrounding scope and are a core feature of JavaScript.",
+      ["Important"]
+    )
+  ],
+  DBMS: [
+    theory(
+      "Easy",
+      "What are the ACID properties in a DBMS?",
+      "ACID stands for Atomicity, Consistency, Isolation, and Durability. These properties ensure reliable transaction processing in a database system.",
+      "They are especially important in systems where correctness and transaction safety matter.",
+      ["acid", "atomicity", "consistency", "isolation", "durability"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "What is the primary purpose of a primary key in a relational table?",
+      [
+        "To uniquely identify each row",
+        "To automatically sort records alphabetically",
+        "To store encrypted values only",
+        "To replace every foreign key in the schema"
+      ],
+      "To uniquely identify each row",
+      "A primary key uniquely identifies each record and cannot contain duplicate values."
+    ),
+    theory(
+      "Medium",
+      "What is normalization, and why is it used?",
+      "Normalization is the process of organizing data into related tables to reduce redundancy and prevent update, insert, and delete anomalies.",
+      "Common normal forms such as 1NF, 2NF, and 3NF improve data consistency and maintainability.",
+      ["normalization", "redundancy", "anomalies", "tables", "consistency"]
+    ),
+    mcq(
+      "Medium",
+      "Which concurrency problem occurs when one transaction reads data written by another transaction that has not committed yet?",
+      ["Dirty read", "Phantom read", "Deadlock", "Lost update"],
+      "Dirty read",
+      "A dirty read occurs when uncommitted data is read and may later be rolled back."
+    ),
+    theory(
+      "Hard",
+      "How do indexes improve database performance, and what trade-off do they introduce?",
+      "Indexes improve read performance by allowing the database engine to locate rows faster without scanning the full table. The trade-off is extra storage and slower writes because inserts, updates, and deletes must also update the index.",
+      "Indexes should be chosen based on real query patterns, not added blindly to every column.",
+      ["indexes", "read performance", "full table scan", "storage", "write overhead"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "Which SQL join returns all rows from the left table and matching rows from the right table, filling missing matches with NULL?",
+      ["LEFT JOIN", "INNER JOIN", "CROSS JOIN", "SELF JOIN"],
+      "LEFT JOIN",
+      "A LEFT JOIN preserves all rows from the left side even when no match exists on the right side."
+    )
+  ],
+  "Operating System": [
+    theory(
+      "Easy",
+      "What is the difference between a process and a thread?",
+      "A process is an independent program in execution with its own memory space, while a thread is a smaller unit of execution inside a process that shares the same memory with other threads of that process.",
+      "Threads are lighter than processes but require careful synchronization around shared state.",
+      ["process", "thread", "memory space", "shared memory", "execution"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "Which scheduling algorithm can cause starvation for long processes if short jobs keep arriving?",
+      ["Shortest Job First", "Round Robin", "First Come First Serve", "Multilevel Feedback Queue"],
+      "Shortest Job First",
+      "Shortest Job First can starve long jobs because shorter jobs may be chosen repeatedly."
+    ),
+    theory(
+      "Medium",
+      "What is deadlock in an operating system?",
+      "Deadlock is a state in which two or more processes are waiting indefinitely for resources held by each other, so none of them can proceed.",
+      "The classic Coffman conditions are mutual exclusion, hold and wait, no preemption, and circular wait.",
+      ["deadlock", "resources", "waiting", "coffman conditions", "circular wait"]
+    ),
+    mcq(
+      "Medium",
+      "What is the main purpose of virtual memory?",
+      [
+        "To give processes the illusion of more memory by using disk space along with RAM",
+        "To permanently store files after shutdown",
+        "To replace CPU scheduling with disk scheduling",
+        "To remove the need for cache memory"
+      ],
+      "To give processes the illusion of more memory by using disk space along with RAM",
+      "Virtual memory allows systems to run programs larger than physical RAM by using paging or swapping."
+    ),
+    theory(
+      "Hard",
+      "What is context switching and why can too much of it hurt performance?",
+      "Context switching is the act of saving the state of one process or thread and restoring another so the CPU can switch execution. Excessive context switching adds overhead because the system spends more time switching than doing useful work.",
+      "High context-switch rates can reduce throughput and increase latency in heavily loaded systems.",
+      ["context switching", "save state", "restore state", "overhead", "latency"]
+    ),
+    mcq(
+      "Hard",
+      "Which page replacement algorithm is known for Belady's anomaly?",
+      ["FIFO", "LRU", "Optimal", "Clock"],
+      "FIFO",
+      "Belady's anomaly is the case where adding more frames can increase page faults under FIFO."
+    )
+  ],
+  Networking: [
+    theory(
+      "Easy",
+      "What is the difference between TCP and UDP?",
+      "TCP is connection-oriented and provides reliable, ordered delivery with retransmission and flow control. UDP is connectionless and sends datagrams with lower overhead but no guarantee of delivery or order.",
+      "TCP is used where reliability matters; UDP is used where low latency matters more.",
+      ["tcp", "udp", "reliable", "ordered", "connectionless"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "Which OSI layer is primarily responsible for routing packets between networks?",
+      ["Network layer", "Transport layer", "Data link layer", "Application layer"],
+      "Network layer",
+      "Routing is handled at the network layer, where IP addressing and path selection occur."
+    ),
+    theory(
+      "Medium",
+      "How does DNS resolution work at a high level?",
+      "DNS resolution translates a domain name into an IP address by checking local caches and then querying recursive and authoritative DNS servers until the address is found.",
+      "Without DNS, users would need to remember raw IP addresses instead of domain names.",
+      ["dns", "domain name", "ip address", "cache", "authoritative server"]
+    ),
+    mcq(
+      "Medium",
+      "What is the purpose of a subnet mask?",
+      [
+        "To separate the network portion of an IP address from the host portion",
+        "To encrypt packets before they leave the router",
+        "To replace the default gateway in a LAN",
+        "To convert IPv4 addresses into MAC addresses"
+      ],
+      "To separate the network portion of an IP address from the host portion",
+      "A subnet mask tells devices which part of an address refers to the network and which part refers to a host."
+    ),
+    theory(
+      "Hard",
+      "What happens during a TLS handshake?",
+      "During a TLS handshake, the client and server agree on protocol details, verify the server certificate, exchange key material, and establish shared session keys used to encrypt subsequent communication.",
+      "The handshake is what enables HTTPS to provide secure communication over an untrusted network.",
+      ["tls handshake", "certificate", "key exchange", "session keys", "encryption"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "What is the main purpose of NAT in many home and office networks?",
+      [
+        "To translate private IP addresses to public IP addresses",
+        "To replace DNS resolution with direct routing",
+        "To compress packets before transmission",
+        "To guarantee end-to-end encryption"
+      ],
+      "To translate private IP addresses to public IP addresses",
+      "NAT allows multiple devices using private addresses to share a smaller number of public IP addresses."
+    )
+  ],
+  "REST APIs": [
+    theory(
+      "Easy",
+      "What is a REST API?",
+      "A REST API is an API style in which resources are identified by URLs and manipulated using standard HTTP methods such as GET, POST, PUT, PATCH, and DELETE.",
+      "REST also emphasizes stateless communication, meaning each request contains all the context needed by the server.",
+      ["rest api", "resources", "urls", "http methods", "stateless"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "What does HTTP status code 404 mean?",
+      ["Server error", "Resource not found", "Request successful", "Unauthorized"],
+      "Resource not found",
+      "A 404 response means the server could not find the requested resource at the specified URL.",
+      ["Important"]
+    ),
+    theory(
+      "Medium",
+      "What does it mean for an HTTP method to be idempotent?",
+      "An idempotent HTTP method can be called multiple times with the same input and still leave the server in the same state as a single call. GET, PUT, and DELETE are commonly idempotent methods.",
+      "Idempotency matters for retries and fault-tolerant distributed systems.",
+      ["idempotent", "same state", "retries", "put", "delete"]
+    ),
+    mcq(
+      "Medium",
+      "Which HTTP method is typically used for partially updating an existing resource?",
+      ["PATCH", "GET", "POST", "HEAD"],
+      "PATCH",
+      "PATCH applies partial updates, whereas PUT usually replaces the entire resource representation."
+    ),
+    theory(
+      "Hard",
+      "Why is API versioning important, and what are common ways to do it?",
+      "API versioning helps teams introduce breaking changes without immediately breaking existing clients. Common strategies include versioning in the URL, headers, or media type.",
+      "Good versioning enables backward compatibility and smoother client migrations.",
+      ["versioning", "breaking changes", "backward compatibility", "url", "headers"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "Which status code usually means the client is authenticated but does not have permission to access the resource?",
+      ["401", "403", "404", "409"],
+      "403",
+      "401 usually indicates missing or invalid authentication, while 403 indicates access is understood but forbidden."
+    )
+  ],
+  "Cloud (AWS basics)": [
+    theory(
+      "Easy",
+      "What is Amazon EC2?",
+      "Amazon EC2 is a service that provides resizable virtual servers in the cloud so you can run applications without managing physical hardware.",
+      "It is commonly used to host APIs, web servers, background workers, and custom workloads.",
+      ["ec2", "virtual server", "cloud", "compute", "host applications"]
+    ),
+    mcq(
+      "Easy",
+      "Which AWS service is primarily used for object storage?",
+      ["Amazon S3", "Amazon RDS", "Amazon EC2", "Amazon SNS"],
+      "Amazon S3",
+      "S3 is AWS object storage designed for durability, scalability, and wide accessibility."
+    ),
+    theory(
+      "Medium",
+      "What is the difference between vertical scaling and horizontal scaling?",
+      "Vertical scaling means adding more power to a single machine, such as CPU or memory. Horizontal scaling means adding more machines and distributing traffic or workloads among them.",
+      "Cloud platforms make horizontal scaling practical for highly available systems.",
+      ["vertical scaling", "horizontal scaling", "single machine", "more machines", "availability"]
+    ),
+    mcq(
+      "Medium",
+      "Which AWS service is used to manage users, roles, and permissions?",
+      ["IAM", "CloudFront", "Route 53", "Lambda"],
+      "IAM",
+      "IAM controls identity and access management for AWS resources."
+    ),
+    theory(
+      "Hard",
+      "How do Auto Scaling and a Load Balancer improve high availability in AWS?",
+      "A Load Balancer distributes incoming traffic across multiple healthy instances, while Auto Scaling adds or removes instances based on demand or health conditions. Together they improve availability, fault tolerance, and elasticity.",
+      "This pattern prevents a single instance from becoming a bottleneck or a single point of failure.",
+      ["auto scaling", "load balancer", "high availability", "fault tolerance", "elasticity"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "Which AWS storage class is commonly chosen for long-term archival data that is accessed rarely?",
+      ["S3 Glacier", "EBS gp3", "S3 Standard", "ElastiCache"],
+      "S3 Glacier",
+      "S3 Glacier is designed for low-cost archival storage with slower retrieval times."
+    )
+  ],
+  Git: [
+    theory(
+      "Easy",
+      "What is the difference between git fetch and git pull?",
+      "git fetch downloads new commits and references from the remote but does not merge them into your current branch. git pull performs a fetch and then integrates the changes into your current branch.",
+      "Fetch is safer when you want to inspect incoming changes before merging or rebasing.",
+      ["fetch", "pull", "download", "merge", "remote"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "Which command stages all tracked and untracked file changes in a repository?",
+      ["git add -A", "git stage --all", "git commit -a", "git push --all"],
+      "git add -A",
+      "git add -A stages new, modified, and deleted files for the next commit."
+    ),
+    theory(
+      "Medium",
+      "What is the difference between git merge and git rebase?",
+      "git merge combines histories by creating a merge commit, while git rebase rewrites commits so they appear on top of another base commit, producing a linear history.",
+      "Rebase can make history cleaner, but it should be used carefully on shared branches.",
+      ["merge", "rebase", "history", "merge commit", "linear history"]
+    ),
+    mcq(
+      "Medium",
+      "What does git stash do?",
+      [
+        "Temporarily saves uncommitted changes so you can work on something else",
+        "Deletes the last local commit permanently",
+        "Pushes code to a backup remote automatically",
+        "Squashes all commits on the current branch"
+      ],
+      "Temporarily saves uncommitted changes so you can work on something else",
+      "git stash is useful when you need a clean working directory without committing incomplete work."
+    ),
+    theory(
+      "Hard",
+      "How should you handle conflicts during a rebase?",
+      "Resolve the conflicting files manually, mark them as resolved with git add, and then continue the rebase with git rebase --continue. If needed, you can abort with git rebase --abort.",
+      "Understanding the intent of both sets of changes is more important than blindly choosing one side.",
+      ["rebase conflict", "resolve manually", "git add", "rebase continue", "rebase abort"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "Which command undoes the last commit but keeps the changes staged?",
+      ["git reset --soft HEAD~1", "git revert HEAD --staged", "git checkout HEAD~1", "git clean -fd"],
+      "git reset --soft HEAD~1",
+      "A soft reset moves HEAD back while preserving the changes in the staging area."
+    )
+  ],
+  SQL: [
+    theory(
+      "Easy",
+      "What is the difference between WHERE and HAVING in SQL?",
+      "WHERE filters rows before grouping, while HAVING filters groups after aggregation has been applied.",
+      "Use WHERE for row-level filtering and HAVING for conditions on aggregate results such as COUNT or SUM.",
+      ["where", "having", "filter rows", "groups", "aggregation"],
+      ["Frequently Asked"]
+    ),
+    mcq(
+      "Easy",
+      "Which SQL keyword is used to return only unique values?",
+      ["DISTINCT", "UNIQUE", "ONLY", "SEPARATE"],
+      "DISTINCT",
+      "DISTINCT removes duplicate rows from the result based on the selected columns."
+    ),
+    theory(
+      "Medium",
+      "What is the difference between INNER JOIN and LEFT JOIN?",
+      "INNER JOIN returns only matching rows from both tables. LEFT JOIN returns all rows from the left table and matched rows from the right table, filling unmatched right-side values with NULL.",
+      "Choose the join based on whether unmatched left-side rows must still appear.",
+      ["inner join", "left join", "matching rows", "null", "preserve left rows"]
+    ),
+    mcq(
+      "Medium",
+      "Which clause is required to count employees per department?",
+      ["GROUP BY", "ORDER BY", "HAVING", "LIMIT"],
+      "GROUP BY",
+      "GROUP BY groups rows with the same department so aggregate functions like COUNT can be applied per group."
+    ),
+    theory(
+      "Hard",
+      "Why shouldn't you add indexes to every column in a SQL database?",
+      "Indexes speed up reads, but they also consume storage and slow down writes because inserts, updates, and deletes must maintain each index. Too many indexes can hurt overall performance.",
+      "Indexes should be selected based on actual query patterns and measured bottlenecks.",
+      ["indexes", "reads", "writes", "storage", "query patterns"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "Which SQL window function assigns ranks with gaps when there are ties?",
+      ["RANK()", "DENSE_RANK()", "ROW_NUMBER()", "NTILE()"],
+      "RANK()",
+      "RANK() leaves gaps after ties, unlike DENSE_RANK() which does not."
+    )
+  ],
+  "Data Structures": [
+    theory(
+      "Easy",
+      "What is the difference between a stack and a queue?",
+      "A stack follows Last In, First Out (LIFO), while a queue follows First In, First Out (FIFO).",
+      "Stacks are common in recursion and function calls, while queues are common in scheduling and breadth-first traversal.",
+      ["stack", "queue", "lifo", "fifo", "order"]
+    ),
+    mcq(
+      "Easy",
+      "What is the time complexity of binary search on a sorted array?",
+      ["O(log n)", "O(n)", "O(1)", "O(n log n)"],
+      "O(log n)",
+      "Binary search halves the search space on each step, which gives logarithmic time complexity."
+    ),
+    theory(
+      "Medium",
+      "How does a hash table handle collisions?",
+      "A hash table handles collisions using techniques such as chaining, where multiple items share a bucket using a list, or open addressing, where the table probes for another free slot.",
+      "Good hash functions and appropriate resizing help maintain average-case performance.",
+      ["hash table", "collisions", "chaining", "open addressing", "bucket"]
+    ),
+    mcq(
+      "Medium",
+      "Which graph traversal algorithm typically uses a FIFO queue?",
+      ["Breadth-First Search", "Depth-First Search", "Dijkstra only", "Topological Sort only"],
+      "Breadth-First Search",
+      "BFS explores nodes level by level using a queue, while DFS typically uses recursion or a stack."
+    ),
+    theory(
+      "Hard",
+      "Why do balanced binary search trees provide better worst-case performance than an ordinary BST?",
+      "Balanced BSTs keep tree height close to log n, so search, insert, and delete operations remain efficient. An unbalanced BST can degrade into a linked list, causing O(n) worst-case time.",
+      "Self-balancing trees like AVL and Red-Black Trees maintain structural guarantees after updates.",
+      ["balanced bst", "height", "log n", "unbalanced", "worst case"],
+      ["Important"]
+    ),
+    mcq(
+      "Hard",
+      "What is the time complexity of inserting an element into a binary heap?",
+      ["O(log n)", "O(1)", "O(n)", "O(n log n)"],
+      "O(log n)",
+      "Heap insertion may require bubbling the new element up the tree, which takes logarithmic time."
+    )
+  ]
 };
 
-module.exports = { topics, getQuestions: generateFinalList };
+const getQuestions = () =>
+  topics.flatMap(({ name }) =>
+    (rawData[name] || []).map((question) => ({
+      ...question,
+      topicName: name,
+      skillName: question.skillName || name
+    }))
+  );
+
+module.exports = {
+  topics,
+  getQuestions
+};

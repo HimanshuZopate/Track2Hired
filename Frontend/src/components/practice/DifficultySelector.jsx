@@ -1,6 +1,3 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-
 export default function DifficultySelector({ selected, onSelect }) {
   const difficulties = [
     { id: 'Easy', color: 'emerald' },

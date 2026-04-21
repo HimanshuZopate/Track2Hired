@@ -5,11 +5,10 @@ import {
   Brain,
   ClipboardList,
   History,
-  Sparkles,
   Trophy,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import AnswerPanel from '../components/ai/AnswerPanel'
 import FeedbackBox from '../components/ai/FeedbackBox'
 import InputControls from '../components/ai/InputControls'
@@ -118,7 +117,7 @@ function HistoryDrawer({ open, onClose, history, onRestore }) {
 }
 
 // ─── Empty questions state ────────────────────────────────────────────────────
-function EmptyQuestions({ onGoGenerate }) {
+function EmptyQuestions() {
   return (
     <Motion.div
       initial={{ opacity: 0, scale: 0.96 }}
@@ -144,7 +143,6 @@ function SessionStats({ questions, attempts }) {
   const total     = questions.length
   const attempted = Object.keys(attempts).length
   const correct   = Object.values(attempts).filter((a) => a.isCorrect).length
-  const pct       = total ? Math.round((attempted / total) * 100) : 0
 
   return (
     <Motion.div
@@ -241,8 +239,8 @@ function AIPractice() {
 
     if (data.usedFallback) {
       setFallbackMsg(data.providerError
-        ? `AI provider issue (${data.providerError}). Using fallback questions.`
-        : 'AI provider unavailable — showing fallback questions.',
+        ? `AI provider issue (${data.providerError}). Using curated backup questions.`
+        : 'AI provider unavailable — showing curated backup questions.',
       )
     }
     showToast(`${data.questions?.length || 0} questions ready!`)
@@ -265,6 +263,9 @@ function AIPractice() {
         questionId: activeQuestion.id,
         userAnswer: answer.trim(),
         isCorrect,
+        generatedId,
+        skillName: form.skill.trim(),
+        difficulty: form.difficulty,
       }),
     )
     setSubmitting(false)
@@ -273,8 +274,20 @@ function AIPractice() {
 
     const atm = data.attempt
     setAttempts((prev) => ({ ...prev, [activeQuestion.id]: atm }))
-    setFeedback({ isCorrect, attemptCount: atm.attemptCount, attempt: atm })
-    showToast(isCorrect ? '✓ Correct! Great job.' : 'Noted — review the model answer.')
+    setFeedback({
+      isCorrect,
+      attemptCount: atm.attemptCount,
+      attempt: atm,
+      skillProgress: data.skillProgress,
+      readiness: data.readiness,
+    })
+    showToast(
+      isCorrect
+        ? data.skillProgress?.improved
+          ? '✓ Correct! Your skill improved.'
+          : '✓ Correct! Great job.'
+        : 'Noted — review the model answer.'
+    )
   }
 
   // ── Reset feedback → allow re-answer ─────────────────────────────────────

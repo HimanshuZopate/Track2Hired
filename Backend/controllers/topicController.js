@@ -1,5 +1,7 @@
 const Topic = require("../models/Topic");
 
+const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 exports.searchTopics = async (req, res, next) => {
   try {
     const { q } = req.query;
@@ -8,7 +10,7 @@ exports.searchTopics = async (req, res, next) => {
     }
 
     // Text search or regex match
-    const regex = new RegExp(`^${q}`, "i");
+    const regex = new RegExp(`^${escapeRegex(q)}`, "i");
     const topics = await Topic.find({ name: regex }).limit(10).lean();
 
     res.status(200).json({ topics });

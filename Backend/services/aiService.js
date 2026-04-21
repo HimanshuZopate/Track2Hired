@@ -2,6 +2,7 @@
 
 const axios = require("axios");
 const GeneratedQuestion = require("../models/GeneratedQuestion");
+const { getQuestions: getCuratedQuestions } = require("../data/questionsData");
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ALLOWED_DIFFICULTIES = ["Beginner", "Intermediate", "Advanced"];
@@ -95,10 +96,8 @@ const getFromDbCache = async ({ skill, difficulty, type, count }) => {
 
   if (!latest?.questions?.length) return null;
 
-  // Skip entries that are all fallback questions
-  const allFallback = latest.questions.every((q) =>
-    String(q?.id || "").startsWith("fallback-")
-  );
+  // Skip entries that are all curated backup questions
+  const allFallback = latest.questions.every((q) => isBackupQuestionId(q?.id));
   if (allFallback) return null;
 
   return normalizeQuestions(latest.questions, type).slice(0, count);
@@ -201,79 +200,148 @@ const normalizeQuestions = (questions, fallbackType) =>
     };
   });
 
-// ─── Rich fallback library ───────────────────────────────────────────────────
-const FALLBACK_LIBRARY = {
-  react: [
-    { q: "Explain the Virtual DOM and how React uses it for efficient rendering.", a: "The Virtual DOM is a lightweight in-memory representation of the real DOM. React diffs previous and new states (reconciliation), applying only minimal real DOM changes.", e: "This is the core of React's performance model." },
-    { q: "What is the difference between useState and useReducer?", a: "useState is for simple state. useReducer is better for complex state transitions where next state depends on previous state and has multiple sub-values.", e: "useReducer mirrors Redux-style logic inside a component." },
-    { q: "What are React keys and why are they important?", a: "Keys help React identify which list items changed, were added, or removed. They should be stable and unique among siblings.", e: "Using index as key causes bugs when the list is reordered." },
-    { q: "Describe the useEffect cleanup function.", a: "The cleanup runs before the next effect and on unmount. Use it to cancel subscriptions, clear timers, or abort fetch requests.", e: "No cleanup leads to stale closures and memory leaks." },
-    { q: "What is prop drilling and how does Context API solve it?", a: "Prop drilling passes props through multiple layers. Context provides a way to share values globally without explicit prop passing at every level.", e: "Context is ideal for themes, auth, locale — not frequent-update data." },
-    { q: "Explain React.memo and when to use it.", a: "React.memo is a HOC that prevents re-renders if props haven't changed (shallow comparison). Use for expensive components that receive the same props often.", e: "Overusing memo can hurt performance due to comparison overhead." },
-    { q: "What are custom hooks and why use them?", a: "Custom hooks are functions prefixed with 'use' that encapsulate reusable stateful logic. They let you extract and share component logic without render props or HOCs.", e: "Custom hooks follow the same rules as built-in hooks." },
-    { q: "Explain the difference between controlled and uncontrolled components.", a: "Controlled components have their state managed by React via props. Uncontrolled components manage their own state internally via refs.", e: "Controlled components are recommended for form validation." },
-  ],
-  javascript: [
-    { q: "What is the event loop in JavaScript?", a: "The event loop monitors the call stack and callback queue. When the stack is empty, it moves callbacks from the queue to the stack for execution.", e: "This is what makes JS non-blocking despite being single-threaded." },
-    { q: "Explain closures with a real-world example.", a: "A closure is a function that retains access to its outer scope even after the outer function has returned. Example: a counter factory or memoization.", e: "Closures are used in module patterns, memoization, and currying." },
-    { q: "What is the difference between == and ===?", a: "== performs type coercion before comparison; === checks value AND type without coercion. Always prefer ===.", e: "Type coercion causes bugs like 0 == '' being true." },
-    { q: "Explain Promises and async/await.", a: "A Promise represents a future value (pending/fulfilled/rejected). async/await is syntactic sugar over Promises for sequential-looking async code.", e: "async/await makes error handling with try/catch natural." },
-    { q: "What is prototypal inheritance?", a: "Objects inherit properties via the prototype chain. When a property isn't found, the engine walks up until null.", e: "class syntax is syntactic sugar over prototypal inheritance." },
-    { q: "Explain the difference between var, let, and const.", a: "var is function-scoped and hoisted. let and const are block-scoped. const prevents reassignment but not mutation of objects.", e: "Always prefer const, use let when reassignment is needed, avoid var." },
-    { q: "What is debouncing and throttling?", a: "Debouncing delays execution until after a pause in events. Throttling limits execution to at most once per interval. Both optimize performance.", e: "Debounce for search inputs, throttle for scroll handlers." },
-    { q: "Explain WeakMap and WeakSet.", a: "WeakMap/WeakSet hold weak references to objects, allowing garbage collection if no other references exist. Keys must be objects.", e: "Used for private data storage and metadata caching without memory leaks." },
-  ],
-  node: [
-    { q: "Explain the Node.js event-driven architecture.", a: "Node registers events and handlers. When I/O completes, the event loop picks up the callback, enabling high concurrency without threads.", e: "Excellent for I/O-intensive, not CPU-intensive, tasks." },
-    { q: "What is middleware in Express.js?", a: "Middleware are functions with access to req, res, next. They execute sequentially, modifying request/response or ending the cycle.", e: "Examples: authentication, logging, body parsing, error handling." },
-    { q: "How does Node.js handle async operations?", a: "Via libuv's thread pool for I/O and the event loop for callbacks. Heavy I/O is offloaded so the main thread stays free.", e: "Blocking the main thread defeats Node's purpose." },
-    { q: "What is the difference between process.nextTick and setImmediate?", a: "process.nextTick runs before any I/O in the current iteration. setImmediate runs in the check phase, after I/O callbacks.", e: "Overusing nextTick can starve I/O callbacks." },
-    { q: "How do you handle errors in Express?", a: "Use try/catch in async handlers, pass errors to next(), and define a centralized error-handling middleware with (err, req, res, next) signature.", e: "Always have a global error handler as the last middleware." },
-  ],
-  mongodb: [
-    { q: "What is an aggregation pipeline in MongoDB?", a: "A series of stages ($match, $group, $sort, $project, etc.) that transform documents sequentially.", e: "More powerful than simple queries for analytics." },
-    { q: "Explain indexing in MongoDB.", a: "Indexes store a subset of data in an easily traversable form, speeding reads at the cost of write performance.", e: "Always index fields used in $match and $sort." },
-    { q: "What is the difference between findOneAndUpdate and updateOne?", a: "findOneAndUpdate returns the document. updateOne only returns matched/modified counts.", e: "Use findOneAndUpdate when you need the document back." },
-    { q: "What are Mongoose middleware (hooks)?", a: "Pre/post hooks on schema methods. Use async function() syntax in Mongoose 9+.", e: "Common uses: password hashing, setting timestamps." },
-    { q: "How does MongoDB handle transactions?", a: "Multi-document ACID transactions via sessions. Use session.startTransaction(), commit, and abort.", e: "Transactions have overhead; use only when necessary." },
-  ],
-  default: [
-    { q: "Describe your approach to debugging a production issue.", a: "Check structured logs → reproduce locally → find minimal reproducing case → hotfix with feature flag → write regression test.", e: "Systematic debugging reduces MTTR." },
-    { q: "What is the difference between SQL and NoSQL databases?", a: "SQL: relational, fixed schema, ACID, complex joins. NoSQL: flexible schema, horizontally scalable, eventual consistency.", e: "Choose based on data shape and access patterns." },
-    { q: "Explain REST API best practices.", a: "Correct HTTP verbs, stateless requests, resource URLs, proper status codes, versioning, pagination.", e: "Consistent conventions reduce client confusion." },
-    { q: "What is JWT and how does it work?", a: "JSON Web Token: header.payload.signature. Server signs payload with secret, client sends in Authorization header, server verifies.", e: "JWTs are stateless — no session store needed." },
-    { q: "What is CI/CD and why is it important?", a: "CI: run tests on every push. CD: auto-deploy to staging/prod. Reduces integration risk, speeds delivery.", e: "Small frequent deployments are safer than big-bang releases." },
-    { q: "Explain the concept of microservices.", a: "Application split into small, independent services that communicate via APIs. Each service is deployable and scalable independently.", e: "Increases complexity but enables team autonomy and scaling." },
-    { q: "What is rate limiting and why is it important?", a: "Restricting the number of requests a client can make in a time window. Prevents abuse, ensures fair usage, protects server resources.", e: "Implemented via middleware (token bucket, sliding window, etc.)." },
-    { q: "What is CORS and why does it exist?", a: "Cross-Origin Resource Sharing prevents web pages from making requests to a different domain unless the server allows it via headers.", e: "Security mechanism to prevent unauthorized cross-origin data access." },
-  ],
+const isBackupQuestionId = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized.startsWith("fallback-") || normalized.startsWith("backup-");
 };
 
-const pickFallbackBank = (skill) => {
-  const s = skill.trim().toLowerCase();
-  if (s.includes("react")) return FALLBACK_LIBRARY.react;
-  if (s.includes("javascript") || s.includes("js") || s.includes("typescript")) return FALLBACK_LIBRARY.javascript;
-  if (s.includes("node") || s.includes("express")) return FALLBACK_LIBRARY.node;
-  if (s.includes("mongo") || s.includes("mongoose")) return FALLBACK_LIBRARY.mongodb;
-  return FALLBACK_LIBRARY.default;
+const AI_TO_CURATED_DIFFICULTY = {
+  Beginner: "Easy",
+  Intermediate: "Medium",
+  Advanced: "Hard"
+};
+
+const CODING_FALLBACK_LIBRARY = [
+  {
+    skills: ["javascript", "js", "frontend"],
+    question: "Write a JavaScript function `debounce(fn, delay)` that delays execution until the user stops triggering the event for `delay` milliseconds.",
+    answer: "Use a closure to store a timeout ID. Clear the existing timer each time the function is called, then create a new timeout that invokes `fn` after `delay` milliseconds.",
+    explanation: "Debouncing is commonly used for search inputs and resize handlers to prevent unnecessary repeated work."
+  },
+  {
+    skills: ["react", "frontend"],
+    question: "Implement a React component that fetches a list of users on mount, handles loading and error state, and prevents state updates after unmount.",
+    answer: "Use `useEffect` with an AbortController or a cleanup flag. Track `loading`, `error`, and `users` in state, fetch the data inside the effect, and cancel the request in the cleanup function.",
+    explanation: "The key interview point is safe async cleanup and predictable state handling in React."
+  },
+  {
+    skills: ["node", "node.js", "express", "backend"],
+    question: "Build an Express middleware that rate-limits requests by IP to 100 requests per 15 minutes and returns HTTP 429 when the limit is exceeded.",
+    answer: "Store request counts by IP with timestamps, reset the window after 15 minutes, and short-circuit with status 429 when the count exceeds 100. In production, use Redis or a proven middleware package to support multiple instances.",
+    explanation: "Interviewers look for correct HTTP semantics, time-window logic, and awareness of distributed deployments."
+  },
+  {
+    skills: ["mongo", "mongodb", "database"],
+    question: "Write a MongoDB aggregation query that returns each department with the number of employees in it, sorted by employee count descending.",
+    answer: "Use an aggregation pipeline with `$group` on department, count employees using `{ $sum: 1 }`, and then `$sort` by count descending.",
+    explanation: "This tests your ability to use aggregation rather than application-side loops for reporting queries."
+  },
+  {
+    skills: ["sql", "dbms", "database"],
+    question: "Write a SQL query to return the second highest salary from an Employees table.",
+    answer: "A common solution is to select `MAX(salary)` where salary is less than `(SELECT MAX(salary) FROM Employees)`. Window functions such as `DENSE_RANK()` are also valid.",
+    explanation: "Interviewers often look for both a simple nested query approach and awareness of window function solutions."
+  }
+];
+
+const normalizeSkillText = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9+#.\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const shuffleQuestions = (items = []) => {
+  const clone = [...items];
+  for (let index = clone.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [clone[index], clone[randomIndex]] = [clone[randomIndex], clone[index]];
+  }
+  return clone;
+};
+
+const matchesRequestedSkill = (skill, question = {}) => {
+  const requestedSkill = normalizeSkillText(skill);
+  const candidate = normalizeSkillText(question.skillName || question.topicName || "");
+
+  if (!requestedSkill || !candidate) return false;
+  if (requestedSkill.includes(candidate) || candidate.includes(requestedSkill)) return true;
+
+  const aliasGroups = [
+    ["javascript", "js", "typescript", "frontend"],
+    ["node", "node.js", "express", "backend"],
+    ["mongo", "mongodb", "mongoose", "database"],
+    ["react", "frontend"],
+    ["rest", "api", "http"],
+    ["network", "networking", "dns", "tcp", "udp"],
+    ["aws", "cloud"],
+    ["dsa", "data structures", "algorithms"]
+  ];
+
+  return aliasGroups.some((group) => {
+    const requestMatches = group.some((alias) => requestedSkill.includes(alias));
+    const candidateMatches = group.some((alias) => candidate.includes(alias));
+    return requestMatches && candidateMatches;
+  });
+};
+
+const buildCodingFallbackQuestions = ({ skill, count }) => {
+  const requestedSkill = normalizeSkillText(skill);
+  const matchingChallenges = CODING_FALLBACK_LIBRARY.filter((item) =>
+    item.skills.some((alias) => requestedSkill.includes(alias) || alias.includes(requestedSkill))
+  );
+
+  const pool = shuffleQuestions(matchingChallenges.length ? matchingChallenges : CODING_FALLBACK_LIBRARY);
+  const size = Math.max(3, Number(count) || 5);
+
+  return Array.from({ length: size }, (_, index) => {
+    const source = pool[index % pool.length];
+    return {
+      id: `backup-coding-${index + 1}`,
+      question: source.question,
+      type: "Coding",
+      options: [],
+      answer: source.answer,
+      explanation: source.explanation
+    };
+  });
 };
 
 const buildFallbackQuestions = ({ skill, difficulty, type, count }) => {
-  const bank = pickFallbackBank(skill);
-  const qType = type === "Mixed" ? "Theory" : type;
-  const n = Math.max(5, Number(count) || 5);
+  if (type === "Coding") {
+    return buildCodingFallbackQuestions({ skill, count });
+  }
 
-  return Array.from({ length: n }, (_, i) => {
-    const src = bank[i % bank.length];
-    return {
-      id: `fallback-${i + 1}`,
-      question: src ? `[${difficulty}] ${src.q}` : `[${difficulty}] Interview question ${i + 1} about ${skill}`,
-      type: qType,
-      options: qType === "MCQ" ? [src?.a || `Option A`, "Option B", "Option C", "Option D"] : [],
-      answer: src?.a || "Review official documentation for a thorough answer.",
-      explanation: (src?.e || "") + " (Fallback question — AI provider temporarily unavailable.)",
-    };
-  });
+  const requestedDifficulty = AI_TO_CURATED_DIFFICULTY[difficulty] || "Medium";
+  const targetTypes = type === "Mixed" ? ["Theory", "MCQ"] : [type];
+  const allQuestions = getCuratedQuestions();
+
+  const matchingSkillQuestions = allQuestions.filter((question) => matchesRequestedSkill(skill, question));
+  const typeScopedQuestions = (matchingSkillQuestions.length ? matchingSkillQuestions : allQuestions).filter((question) =>
+    targetTypes.includes(question.type)
+  );
+
+  const difficultyFirstPool = shuffleQuestions([
+    ...typeScopedQuestions.filter((question) => question.difficulty === requestedDifficulty),
+    ...typeScopedQuestions.filter((question) => question.difficulty !== requestedDifficulty)
+  ]);
+
+  const finalPool = difficultyFirstPool.length
+    ? difficultyFirstPool
+    : shuffleQuestions(allQuestions.filter((question) => targetTypes.includes(question.type)));
+
+  const size = Math.max(5, Number(count) || 5);
+  const selected = finalPool.slice(0, size);
+  const requestedSkill = normalizeSkillText(skill).replace(/\s+/g, "-") || "general";
+
+  return selected.map((source, index) => ({
+    id: `backup-${requestedSkill}-${index + 1}`,
+    question: source.question,
+    type: source.type,
+    options: source.type === "MCQ" ? shuffleQuestions((source.options || []).map(String)) : [],
+    answer: source.answer,
+    explanation: source.explanation
+  }));
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

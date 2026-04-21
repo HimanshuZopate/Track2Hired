@@ -87,7 +87,8 @@ export const practiceApi = {
   searchTopics:       (query) => api.get(`/api/topics/search?q=${encodeURIComponent(query)}`),
   getTopics:          () => api.get('/api/topics'),
   generateQuestions:  (data) => api.post('/api/questions/generate', data),
-  validateAnswer:     (data) => api.post('/api/questions/validate', data),
+  attemptQuestion:    (data) => api.post('/api/questions/attempt', data),
+  validateAnswer:     (data) => api.post('/api/questions/attempt', data),
   getStats:           () => api.get('/api/questions/stats'),
 }
 

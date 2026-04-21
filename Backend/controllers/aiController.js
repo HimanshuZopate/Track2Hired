@@ -1,6 +1,9 @@
+const mongoose = require("mongoose");
 const GeneratedQuestion = require("../models/GeneratedQuestion");
 const QuestionAttempt = require("../models/QuestionAttempt");
 const { generateQuestions, ALLOWED_DIFFICULTIES, ALLOWED_TYPES } = require("../services/aiService");
+const { updateSkillConfidence } = require("../services/skillProgressionService");
+const { calculateAndUpsertReadiness } = require("../services/readinessService");
 const { recordUserActivity } = require("../services/streakService");
 const INTERNAL_SERVER_ERROR = "Internal server error";
 
@@ -52,7 +55,7 @@ exports.generateAiQuestions = async (req, res) => {
       return res.status(200).json({
         success: false,
         error: "AI generation failed",
-        message: "AI service temporarily busy. Showing fallback questions.",
+        message: "AI service temporarily busy. Showing curated backup questions.",
         fallbackUsed: true,
         provider: result.provider,
         usedFallback: true,
@@ -91,7 +94,7 @@ exports.generateAiQuestions = async (req, res) => {
 // POST /api/ai/attempt
 exports.recordQuestionAttempt = async (req, res) => {
   try {
-    const { questionId, userAnswer, isCorrect } = req.body;
+    const { questionId, userAnswer, isCorrect, generatedId, skillName, difficulty } = req.body;
 
     if (!questionId || userAnswer === undefined || typeof isCorrect !== "boolean") {
       return res.status(400).json({
@@ -99,12 +102,30 @@ exports.recordQuestionAttempt = async (req, res) => {
       });
     }
 
+    let generatedSession = null;
+    if (generatedId && mongoose.Types.ObjectId.isValid(String(generatedId))) {
+      generatedSession = await GeneratedQuestion.findOne({
+        _id: generatedId,
+        userId: req.user._id
+      }).lean();
+    }
+
+    const resolvedSkillName = String(skillName || generatedSession?.skill || "").trim();
+    const resolvedDifficulty = String(difficulty || generatedSession?.difficulty || "Intermediate").trim();
+
+    const existingAttempt = await QuestionAttempt.findOne({
+      userId: req.user._id,
+      questionId: String(questionId)
+    });
+
     const attempt = await QuestionAttempt.findOneAndUpdate(
       { userId: req.user._id, questionId: String(questionId) },
       {
         $set: {
           userAnswer: String(userAnswer),
-          isCorrect
+          isCorrect,
+          skillName: resolvedSkillName || null,
+          difficulty: resolvedDifficulty || null
         },
         $inc: { attemptCount: 1 }
       },
@@ -115,9 +136,47 @@ exports.recordQuestionAttempt = async (req, res) => {
       }
     );
 
+    let skillProgress = {
+      improved: false,
+      created: false,
+      delta: 0,
+      oldConfidence: null,
+      newConfidence: null,
+      skillName: resolvedSkillName || null
+    };
+
+    let readiness;
+
+    if (isCorrect && !existingAttempt?.isCorrect && resolvedSkillName) {
+      const progression = await updateSkillConfidence(
+        req.user._id,
+        resolvedSkillName,
+        resolvedDifficulty,
+        { category: "Technical" }
+      );
+
+      skillProgress = {
+        improved: progression.improved,
+        created: progression.created,
+        delta: progression.delta,
+        oldConfidence: progression.oldConfidence,
+        newConfidence: progression.newConfidence,
+        skillName: resolvedSkillName
+      };
+
+      readiness = progression.readiness;
+    } else {
+      readiness = await calculateAndUpsertReadiness(req.user._id);
+    }
+
     await recordUserActivity(req.user._id, "QuestionAttempt", attempt._id);
 
-    return res.status(201).json({ message: "Attempt recorded", attempt });
+    return res.status(201).json({
+      message: "Attempt recorded",
+      attempt,
+      skillProgress,
+      readiness
+    });
   } catch (error) {
     return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
   }

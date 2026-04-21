@@ -7,6 +7,8 @@ const { topics, getQuestions } = require("../data/questionsData");
 
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
+const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const seedDatabase = async () => {
   try {
     console.log("Connecting to MongoDB...");
@@ -17,7 +19,9 @@ const seedDatabase = async () => {
     console.log(`Checking/Seeding ${topics.length} topics...`);
     const topicDocs = [];
     for (const t of topics) {
-      let topicDoc = await Topic.findOne({ name: new RegExp(`^${t.name}$`, "i") });
+      let topicDoc = await Topic.findOne({
+        name: new RegExp(`^${escapeRegex(t.name)}$`, "i")
+      });
       if (!topicDoc) {
         topicDoc = await Topic.create(t);
         console.log(`Created topic: ${t.name}`);
@@ -31,8 +35,8 @@ const seedDatabase = async () => {
       topicMap[t.name] = t._id;
     });
 
-    // 2. Generate/Seed Questions
-    console.log("Generating question variations...");
+    // 2. Seed curated interview questions
+    console.log("Preparing curated interview questions...");
     const allQuestions = getQuestions();
     
     console.log(`Total questions to process: ${allQuestions.length}`);
@@ -43,6 +47,7 @@ const seedDatabase = async () => {
     const dbQuestions = allQuestions.map(q => {
         return {
             topicId: topicMap[q.topicName],
+            skillName: q.skillName || q.topicName,
             question: q.question,
             answer: q.answer,
             difficulty: q.difficulty,
@@ -54,8 +59,8 @@ const seedDatabase = async () => {
         }
     });
 
-    // Clear existing questions to avoid duplicates on multiple runs (Optional, but clean for seeding)
-    console.log("Clearing existing generated questions...");
+    // Clear existing questions before reseeding the curated bank.
+    console.log("Clearing existing question bank...");
     await Question.deleteMany({});
     
     console.log("Inserting new questions in batches...");

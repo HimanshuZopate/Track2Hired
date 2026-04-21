@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { Send, CheckCircle2, XCircle, ChevronRight, Hash, BookOpen } from 'lucide-react';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
+import { Send, CheckCircle2, XCircle, Hash, BookOpen, TrendingUp, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 export default function PracticeCard({ question, onSubmit, submitting, result }) {
@@ -18,7 +18,7 @@ export default function PracticeCard({ question, onSubmit, submitting, result })
   };
 
   return (
-    <motion.div
+    <Motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="overflow-hidden rounded-2xl border border-white/10"
@@ -47,6 +47,12 @@ export default function PracticeCard({ question, onSubmit, submitting, result })
             <span className="flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-medium tracking-wider text-white/70 border border-white/10">
                {question.topicName}
             </span>
+            {question.skillName && (
+                <span className="flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2.5 py-1 text-[10px] font-medium tracking-wider text-sky-200 border border-sky-500/20">
+                   <Sparkles size={12} />
+                   {question.skillName}
+                </span>
+            )}
             {question.tags && question.tags.length > 0 && question.tags.map((tag, idx) => (
                 <span key={idx} className="flex items-center gap-1.5 rounded-full bg-purple-500/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-purple-300 border border-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.15)]">
                     {tag}
@@ -102,7 +108,7 @@ export default function PracticeCard({ question, onSubmit, submitting, result })
             )}
             
             <div className="mt-6 flex justify-end">
-                <motion.button
+                <Motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     disabled={submitting || (isMcq ? !mcqSelection : theoryAnswer.length < 10)}
@@ -114,12 +120,12 @@ export default function PracticeCard({ question, onSubmit, submitting, result })
                     ) : (
                         <>Submit Answer <Send size={14} /></>
                     )}
-                </motion.button>
+                </Motion.button>
             </div>
           </div>
         ) : (
           <AnimatePresence>
-            <motion.div
+            <Motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 className="space-y-4"
@@ -132,13 +138,25 @@ export default function PracticeCard({ question, onSubmit, submitting, result })
                     </div>
                     <div>
                         <h4 className={`text-sm font-bold ${result.isCorrect ? 'text-emerald-300' : 'text-red-300'}`}>
-                            {result.isCorrect ? 'Correct Answer!' : 'Incorrect'}
+                            {result.isCorrect ? '✅ Correct' : '❌ Wrong'}
                         </h4>
                         {!isMcq && (
                             <p className="mt-1 text-xs text-white/60">
                                 Match Score: <span className="font-semibold text-white/80">{result.score}%</span> 
                                 ({result.matchedKeywords}/{result.totalKeywords} keywords found)
                             </p>
+                        )}
+
+                        {result.skillProgress?.improved && (
+                            <div className="mt-4 rounded-xl border border-sky-500/20 bg-sky-500/10 p-3">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-sky-200">
+                                    <TrendingUp size={16} />
+                                    Your skill improved!
+                                </div>
+                                <p className="mt-1 text-xs text-sky-100/80">
+                                    {result.skillProgress.skillName} confidence increased by {result.skillProgress.delta?.toFixed?.(1) || result.skillProgress.delta} and is now {result.skillProgress.newConfidence}/5.
+                                </p>
+                            </div>
                         )}
                         
                         <div className="mt-4 space-y-3">
@@ -160,10 +178,10 @@ export default function PracticeCard({ question, onSubmit, submitting, result })
                         </div>
                     </div>
                 </div>
-            </motion.div>
+            </Motion.div>
           </AnimatePresence>
         )}
       </div>
-    </motion.div>
+    </Motion.div>
   );
 }

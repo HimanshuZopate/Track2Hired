@@ -25,8 +25,15 @@ const calculateAndUpsertReadiness = async (userId) => {
   const technicalScore = Number(((technicalAvg / 5) * 100).toFixed(2));
   const hrScore = Number(((hrAvg / 5) * 100).toFixed(2));
 
-  // Weighted overall score: 70% technical + 30% HR (percentage scale)
-  const overallScore = Number((technicalScore * 0.7 + hrScore * 0.3).toFixed(2));
+  let overallScore = 0;
+
+  if (technicalScores.length && hrScores.length) {
+    overallScore = Number((technicalScore * 0.7 + hrScore * 0.3).toFixed(2));
+  } else if (technicalScores.length) {
+    overallScore = technicalScore;
+  } else if (hrScores.length) {
+    overallScore = hrScore;
+  }
 
   const readiness = await ReadinessScore.findOneAndUpdate(
     { userId },

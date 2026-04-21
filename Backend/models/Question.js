@@ -8,6 +8,12 @@ const questionSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    skillName: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true
+    },
     question: {
       type: String,
       required: true,
@@ -52,6 +58,6 @@ const questionSchema = new mongoose.Schema(
 );
 
 // Compound index for fast filtered queries
-questionSchema.index({ topicId: 1, difficulty: 1, type: 1 });
+questionSchema.index({ topicId: 1, skillName: 1, difficulty: 1, type: 1 });
 
 module.exports = mongoose.model("Question", questionSchema);
