@@ -104,20 +104,48 @@ const taskUpdateValidator = [
 const taskIdParamValidator = [param("id").isMongoId().withMessage("Invalid task id")];
 
 const resumeProfileValidator = [
+  body("profileId").optional({ checkFalsy: true }).isMongoId().withMessage("Valid profileId is required"),
   body("personalInfo.name").trim().notEmpty().withMessage("personalInfo.name is required"),
   body("personalInfo.email")
     .isEmail()
     .withMessage("personalInfo.email must be a valid email")
-    .normalizeEmail()
+    .normalizeEmail(),
+  body("templateKey").optional().isString().withMessage("templateKey must be a string"),
+  body("targetJobRole").optional().isString().withMessage("targetJobRole must be a string")
 ];
 
 const resumeGenerateValidator = [
-  body("profileId").isMongoId().withMessage("Valid profileId is required")
+  body("profileId").optional({ checkFalsy: true }).isMongoId().withMessage("Valid profileId is required"),
+  body().custom((value, { req }) => {
+    if (req.body?.profileId) {
+      return true;
+    }
+
+    const name = req.body?.personalInfo?.name || req.body?.name;
+    const email = req.body?.personalInfo?.email || req.body?.email;
+
+    if (!String(name || "").trim() || !String(email || "").trim()) {
+      throw new Error("Either profileId or personalInfo.name and personalInfo.email are required");
+    }
+
+    return true;
+  })
 ];
 
 const resumeAnalyzeValidator = [
-  body("resumeId").isMongoId().withMessage("Valid resumeId is required"),
-  body("jobDescription").trim().notEmpty().withMessage("jobDescription is required")
+  body("resumeId").optional({ checkFalsy: true }).isMongoId().withMessage("Valid resumeId is required"),
+  body("jobDescription").trim().notEmpty().withMessage("jobDescription is required"),
+  body().custom((value, { req }) => {
+    const hasResumeText = Boolean(String(req.body?.resumeText || "").trim());
+    const hasResumeId = Boolean(String(req.body?.resumeId || "").trim());
+    const hasFile = Boolean(req.file);
+
+    if (!hasResumeText && !hasResumeId && !hasFile) {
+      throw new Error("Provide a resume PDF/text file, resume text, or resumeId");
+    }
+
+    return true;
+  })
 ];
 
 module.exports = {

@@ -16,6 +16,15 @@ const resumeDocumentSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    htmlContent: {
+      type: String,
+      default: ""
+    },
+    templateKey: {
+      type: String,
+      trim: true,
+      default: "minimal-professional"
+    },
     pdfUrl: {
       type: String,
       trim: true,
@@ -26,6 +35,10 @@ const resumeDocumentSchema = new mongoose.Schema(
       min: 0,
       max: 100,
       default: 0
+    },
+    analysisSnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
     }
   },
   {

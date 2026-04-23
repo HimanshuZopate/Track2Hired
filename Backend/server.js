@@ -26,6 +26,7 @@ app.use("/api/suggestions", require("./routes/suggestionRoutes"));
 app.use("/api/motivation", require("./routes/motivationRoutes"));
 app.use("/api/analytics", require("./routes/analyticsRoutes"));
 app.use("/api/streak", require("./routes/streakRoutes"));
+app.use("/api/leaderboard", require("./routes/leaderboardRoutes"));
 app.use("/api/readiness", require("./routes/readinessRoutes"));
 app.use("/api/resume", require("./routes/resumeRoutes"));
 app.use("/api/questions", require("./routes/questionRoutes"));

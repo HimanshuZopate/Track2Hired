@@ -652,6 +652,41 @@ body {
   }
 }
 
+.streak-counter-glow {
+  text-shadow: 0 0 25px rgba(251, 191, 36, 0.22);
+  animation: streakCounterPulse 2.8s ease-in-out infinite;
+}
+
+.badge-chip {
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.badge-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.16);
+}
+
+.heatmap-cell {
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.heatmap-cell:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.28);
+}
+
+@keyframes streakCounterPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 18px rgba(251, 191, 36, 0.18);
+  }
+  50% {
+    transform: scale(1.02);
+    text-shadow: 0 0 30px rgba(251, 191, 36, 0.35);
+  }
+}
+
 @media (max-width: 1120px) {
   .mission-main-grid {
     grid-template-columns: 1fr;

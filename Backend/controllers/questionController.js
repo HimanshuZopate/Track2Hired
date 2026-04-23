@@ -235,7 +235,7 @@ const attemptQuestion = async (req, res, next) => {
       readiness = await calculateAndUpsertReadiness(req.user._id);
     }
 
-    await recordUserActivity(req.user._id, "QuestionAttempt", attempt._id);
+    await recordUserActivity(req.user._id, "question_answered", attempt._id);
 
     return res.status(200).json({
       success: true,

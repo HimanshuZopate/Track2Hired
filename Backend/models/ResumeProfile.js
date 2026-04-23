@@ -69,6 +69,16 @@ const resumeProfileSchema = new mongoose.Schema(
       type: [{ type: String, trim: true }],
       default: []
     },
+    targetJobRole: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    templateKey: {
+      type: String,
+      trim: true,
+      default: "minimal-professional"
+    },
     targetJobDescription: {
       type: String,
       trim: true,

@@ -10,12 +10,21 @@ const atsReportSchema = new mongoose.Schema(
     resumeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ResumeDocument",
-      required: true
+      default: null
+    },
+    sourceType: {
+      type: String,
+      trim: true,
+      default: "uploaded"
     },
     jobDescription: {
       type: String,
       required: true,
       trim: true
+    },
+    extractedResumeText: {
+      type: String,
+      default: ""
     },
     matchedKeywords: {
       type: [{ type: String, trim: true }],
@@ -25,15 +34,58 @@ const atsReportSchema = new mongoose.Schema(
       type: [{ type: String, trim: true }],
       default: []
     },
+    matchedSkills: {
+      type: [{ type: String, trim: true }],
+      default: []
+    },
+    missingSkills: {
+      type: [{ type: String, trim: true }],
+      default: []
+    },
+    keywordMatchPercentage: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
     atsScore: {
       type: Number,
       min: 0,
       max: 100,
       required: true
     },
+    scoreBreakdown: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
     suggestions: {
       type: [{ type: String, trim: true }],
       default: []
+    },
+    sectionsStatus: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    sectionWarnings: {
+      type: [{ type: String, trim: true }],
+      default: []
+    },
+    pitfalls: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    improvementChecklist: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: []
+    },
+    readyForATS: {
+      type: Boolean,
+      default: false
+    },
+    readyBadge: {
+      type: String,
+      trim: true,
+      default: "Needs Optimization"
     }
   },
   {

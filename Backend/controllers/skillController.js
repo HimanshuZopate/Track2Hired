@@ -25,6 +25,8 @@ exports.addSkill = async (req, res) => {
 
     const readiness = await calculateAndUpsertReadiness(req.user._id);
 
+    await recordUserActivity(req.user._id, "skill_added", skill._id);
+
     return res.status(201).json({ skill, readiness });
   } catch (error) {
     if (error.code === 11000) {
@@ -98,7 +100,7 @@ exports.updateSkill = async (req, res) => {
 
     const readiness = await calculateAndUpsertReadiness(req.user._id);
 
-    await recordUserActivity(req.user._id, "SkillUpdate", skill._id);
+    await recordUserActivity(req.user._id, "skill_added", skill._id);
 
     return res.json({ skill, readiness });
   } catch (error) {

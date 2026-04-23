@@ -4,10 +4,12 @@ import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Skills from './pages/Skills'
+import StreakDashboard from './pages/StreakDashboard'
 import Tasks from './pages/Tasks'
 import { getAuthToken } from './services/api'
 
 import Practice from './pages/Practice'
+import ResumeStudio from './pages/ResumeStudio'
 
 function HomeRoute() {
   const token = getAuthToken()
@@ -95,10 +97,10 @@ function App() {
           }
         />
         <Route
-          path="/resume"
+          path="/resume/*"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <ResumeStudio />
             </ProtectedRoute>
           }
         />
@@ -114,7 +116,7 @@ function App() {
           path="/streak"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <StreakDashboard />
             </ProtectedRoute>
           }
         />

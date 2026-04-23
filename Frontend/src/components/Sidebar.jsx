@@ -79,6 +79,8 @@ function Sidebar({ role = 'student' }) {
   const [open, setOpen]   = useState(false)
   const logout            = useLogout()
 
+  const isRouteActive = (to) => location.pathname === to || location.pathname.startsWith(`${to}/`)
+
   const filteredItems = useMemo(
     () => navItems.filter((item) => !(item.recruiterOnly && role !== 'recruiter')),
     [role],
@@ -99,7 +101,7 @@ function Sidebar({ role = 'student' }) {
             <NavLink
               key={item.to}
               item={item}
-              isActive={location.pathname === item.to}
+              isActive={isRouteActive(item.to)}
             />
           ))}
         </nav>
@@ -115,7 +117,7 @@ function Sidebar({ role = 'student' }) {
         <div className="grid grid-cols-5 px-2 py-2">
           {filteredItems.slice(0, 4).map((item) => {
             const Icon     = item.icon
-            const isActive = location.pathname === item.to
+            const isActive = isRouteActive(item.to)
             return (
               <Link
                 key={item.to}
@@ -176,7 +178,7 @@ function Sidebar({ role = 'student' }) {
               <div className="flex-1 space-y-2 overflow-y-auto">
                 {filteredItems.map((item) => {
                   const Icon     = item.icon
-                  const isActive = location.pathname === item.to
+                  const isActive = isRouteActive(item.to)
                   return (
                     <Link
                       key={item.to}

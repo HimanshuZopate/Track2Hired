@@ -182,7 +182,7 @@ exports.updateTask = async (req, res) => {
     );
 
     if (previousTask.status !== "Completed" && task.status === "Completed") {
-      await recordUserActivity(req.user._id, "TaskComplete", task._id);
+      await recordUserActivity(req.user._id, "task_completed", task._id);
     }
 
     return res.json({ task });
@@ -234,7 +234,7 @@ exports.markTaskCompleted = async (req, res) => {
     );
 
     if (existingTask.status !== "Completed") {
-      await recordUserActivity(req.user._id, "TaskComplete", task._id);
+      await recordUserActivity(req.user._id, "task_completed", task._id);
     }
 
     return res.json({ task });

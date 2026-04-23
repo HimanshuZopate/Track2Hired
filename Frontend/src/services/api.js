@@ -72,6 +72,11 @@ export const clearAuthToken = () => {
 export const dashboardApi = {
   getProfile:         () => api.get('/api/users/profile'),
   getStreak:          () => api.get('/api/streak'),
+  getStreakDashboard: () => api.get('/api/streak/dashboard'),
+  getStreakHeatmap:   () => api.get('/api/streak/heatmap'),
+  getLeaderboard:     () => api.get('/api/leaderboard'),
+  getStreakNotifications: () => api.get('/api/streak/notifications'),
+  getStreakSuggestions:   () => api.get('/api/streak/suggestions'),
   getReadiness:       () => api.get('/api/readiness'),
   getSkills:          () => api.get('/api/skills'),
   getTasks:           () => api.get('/api/tasks'),
@@ -90,6 +95,15 @@ export const practiceApi = {
   attemptQuestion:    (data) => api.post('/api/questions/attempt', data),
   validateAnswer:     (data) => api.post('/api/questions/attempt', data),
   getStats:           () => api.get('/api/questions/stats'),
+}
+
+export const resumeApi = {
+  getWorkspace: () => api.get('/api/resume/workspace'),
+  getTemplates: () => api.get('/api/resume/templates'),
+  saveProfile: (data) => api.post('/api/resume/profile', data),
+  generateResume: (data) => api.post('/api/resume/generate', data),
+  analyzeResume: (data, config = {}) => api.post('/api/resume/analyze', data, config),
+  downloadResume: (id) => api.get(`/api/resume/download/${id}`),
 }
 
 // ─── Request interceptor — attach Bearer token ────────────────────────────────

@@ -49,8 +49,6 @@ exports.generateAiQuestions = async (req, res) => {
       questions: result.questions
     });
 
-    await recordUserActivity(req.user._id, "AIPractice", generated._id);
-
     if (result.usedFallback) {
       return res.status(200).json({
         success: false,
@@ -169,7 +167,7 @@ exports.recordQuestionAttempt = async (req, res) => {
       readiness = await calculateAndUpsertReadiness(req.user._id);
     }
 
-    await recordUserActivity(req.user._id, "QuestionAttempt", attempt._id);
+    await recordUserActivity(req.user._id, "question_answered", attempt._id);
 
     return res.status(201).json({
       message: "Attempt recorded",
