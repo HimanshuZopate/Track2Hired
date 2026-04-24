@@ -80,11 +80,15 @@ export const dashboardApi = {
   getReadiness:       () => api.get('/api/readiness'),
   getSkills:          () => api.get('/api/skills'),
   getTasks:           () => api.get('/api/tasks'),
-  getAnalyticsSummary:() => api.get('/api/analytics/summary'),
-  getSuggestions:     () => api.get('/api/suggestions'),
-  getTodaySuggestion: () => api.get('/api/suggestions/today'),
-  getTrends:          () => api.get('/api/analytics/trends'),
-  getStreakHistory:   () => api.get('/api/streak/history'),
+  getAnalyticsSummary:    () => api.get('/api/analytics/summary'),
+  getAnalyticsSkills:     () => api.get('/api/analytics/skills'),
+  getReadinessTrend:      (days = 30) => api.get(`/api/analytics/readiness-trend?days=${days}`),
+  getAnalyticsPerformance:() => api.get('/api/analytics/performance'),
+  getAnalyticsSuggestions:() => api.get('/api/analytics/suggestions'),
+  getSuggestions:         () => api.get('/api/suggestions'),
+  getTodaySuggestion:     () => api.get('/api/suggestions/today'),
+  getTrends:              () => api.get('/api/analytics/trends'),
+  getStreakHistory:        () => api.get('/api/streak/history'),
 }
 
 // ─── Practice API shortcuts (DB Driven) ───────────────────────────────────────
