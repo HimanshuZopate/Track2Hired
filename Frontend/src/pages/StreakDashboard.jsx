@@ -62,9 +62,9 @@ function StatTile({ icon: Icon, label, value, suffix = '', subtext = '', glow = 
           </div>
         </div>
         <div>
-          <p className="streak-counter-glow text-4xl font-bold text-almond">
+          <p className="streak-counter-glow text-4xl font-bold text-almond tabular-nums tracking-tight">
             <AnimatedCounter value={value} className="inline-block" />
-            <span className="ml-1 text-lg font-medium text-white/55">{suffix}</span>
+            <span className="ml-1 text-lg font-medium text-white/55 tracking-normal">{suffix}</span>
           </p>
           {subtext ? <p className="mt-2 text-sm text-white/55">{subtext}</p> : null}
         </div>
@@ -102,9 +102,9 @@ function BadgeStrip({ badges = [], activeBadge = null, currentBadge = null, load
               animate={{
                 opacity: 1,
                 y: 0,
-                scale: badge.unlocked ? [1, 1.04, 1] : 1,
+                scale: 1,
               }}
-              transition={{ duration: 0.35, delay: index * 0.05, repeat: badge.unlocked ? Infinity : 0, repeatDelay: 2.2 }}
+              transition={{ duration: 0.35, delay: index * 0.05 }}
               className={`badge-chip rounded-2xl border px-3 py-3 text-center ${
                 badge.unlocked
                   ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
@@ -426,7 +426,7 @@ function StreakDashboard() {
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-white/45">Activity Heatmap</p>
                   <h3 className="mt-2 text-2xl font-semibold text-almond">Last 90 days</h3>
-                  <p className="mt-2 text-sm text-white/55">GitHub-style consistency grid with intensity driven by your daily activity count.</p>
+                  <p className="mt-2 text-sm text-white/55">Activity heatmap — each cell represents a day, darker shades reflect higher activity counts.</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white/70">
                   Max daily activity <span className="ml-2 font-semibold text-almond">{dashboard?.heatmap?.maxCount || 0}</span>

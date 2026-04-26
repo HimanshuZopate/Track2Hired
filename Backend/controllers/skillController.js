@@ -4,7 +4,7 @@ const ReadinessScore = require("../models/ReadinessScore");
 const SkillHistory = require("../models/SkillHistory");
 const { calculateAndUpsertReadiness } = require("../services/readinessService");
 const { recordUserActivity } = require("../services/streakService");
-const INTERNAL_SERVER_ERROR = "Internal server error";
+const { sendSuccess, sendError } = require("../utils/responseHandler");
 
 // POST /api/skills
 exports.addSkill = async (req, res) => {
@@ -12,7 +12,7 @@ exports.addSkill = async (req, res) => {
     const { skillName, category, level, confidenceScore } = req.body;
 
     if (!skillName || !category || !level || confidenceScore === undefined) {
-      return res.status(400).json({ message: "All fields are required" });
+      return sendError(res, "All fields are required", 400);
     }
 
     const skill = await Skill.create({
@@ -27,12 +27,12 @@ exports.addSkill = async (req, res) => {
 
     await recordUserActivity(req.user._id, "skill_added", skill._id);
 
-    return res.status(201).json({ skill, readiness });
+    return sendSuccess(res, { skill, readiness }, "Skill added successfully", 201);
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(409).json({ message: "Skill already exists for this user" });
+      return sendError(res, "Skill already exists for this user", 409);
     }
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -42,9 +42,9 @@ exports.getUserSkills = async (req, res) => {
     const skills = await Skill.find({ userId: req.user._id }).sort({ createdAt: -1 });
     const readiness = await ReadinessScore.findOne({ userId: req.user._id });
 
-    return res.json({ skills, readiness });
+    return sendSuccess(res, { skills, readiness }, "Skills retrieved successfully", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -54,7 +54,7 @@ exports.updateSkill = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid skill id" });
+      return sendError(res, "Invalid skill id", 400);
     }
 
     const allowedUpdates = ["skillName", "category", "level", "confidenceScore"];
@@ -67,7 +67,7 @@ exports.updateSkill = async (req, res) => {
     });
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ message: "No valid fields provided for update" });
+      return sendError(res, "No valid fields provided for update", 400);
     }
 
     const existingSkill = await Skill.findOne({ _id: id, userId: req.user._id }).select(
@@ -75,7 +75,7 @@ exports.updateSkill = async (req, res) => {
     );
 
     if (!existingSkill) {
-      return res.status(404).json({ message: "Skill not found" });
+      return sendError(res, "Skill not found", 404);
     }
 
     const oldConfidence = Number(existingSkill.confidenceScore);
@@ -102,12 +102,12 @@ exports.updateSkill = async (req, res) => {
 
     await recordUserActivity(req.user._id, "skill_added", skill._id);
 
-    return res.json({ skill, readiness });
+    return sendSuccess(res, { skill, readiness }, "Skill updated successfully", 200);
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(409).json({ message: "Skill already exists for this user" });
+      return sendError(res, "Skill already exists for this user", 409);
     }
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -117,19 +117,19 @@ exports.deleteSkill = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid skill id" });
+      return sendError(res, "Invalid skill id", 400);
     }
 
     const skill = await Skill.findOneAndDelete({ _id: id, userId: req.user._id });
 
     if (!skill) {
-      return res.status(404).json({ message: "Skill not found" });
+      return sendError(res, "Skill not found", 404);
     }
 
     const readiness = await calculateAndUpsertReadiness(req.user._id);
 
-    return res.json({ message: "Skill deleted successfully", readiness });
+    return sendSuccess(res, { readiness }, "Skill deleted successfully", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };

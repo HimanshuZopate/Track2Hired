@@ -6,6 +6,7 @@ const ReadinessScore = require("../models/ReadinessScore");
 const { calculateAndUpsertReadiness } = require("../services/readinessService");
 const { updateSkillConfidence } = require("../services/skillProgressionService");
 const { recordUserActivity } = require("../services/streakService");
+const { sendSuccess, sendError } = require("../utils/responseHandler");
 
 const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -99,14 +100,14 @@ exports.generateQuestions = async (req, res, next) => {
     const { topic, difficulty, type, count = 5, excludeQuestionIds = [] } = req.body;
 
     if (!topic || !difficulty || !type) {
-      return res.status(400).json({ message: "Topic, difficulty, and type are required." });
+      return sendError(res, "Topic, difficulty, and type are required.", 400);
     }
 
     const topicDoc = await Topic.findOne({
       name: new RegExp(`^${escapeRegex(String(topic).trim())}$`, "i")
     });
     if (!topicDoc) {
-      return res.status(404).json({ message: "Topic not found." });
+      return sendError(res, "Topic not found.", 404);
     }
 
     const excludedIds = Array.isArray(excludeQuestionIds)
@@ -123,15 +124,13 @@ exports.generateQuestions = async (req, res, next) => {
     const topicQuestions = await Question.find(query).lean();
 
     if (!topicQuestions.length) {
-      return res.status(200).json({
-        success: true,
+      return sendSuccess(res, {
         topic: topicDoc.name,
         topicId: topicDoc._id,
         requestedCount: clampCount(count),
         returnedCount: 0,
         questions: [],
-        message: "No more curated questions are available for this session and topic."
-      });
+      }, "No more curated questions are available for this session and topic.", 200);
     }
 
     const selectedQuestions = selectQuestions(topicQuestions, {
@@ -140,14 +139,13 @@ exports.generateQuestions = async (req, res, next) => {
       count: clampCount(count)
     });
 
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, {
       topic: topicDoc.name,
       topicId: topicDoc._id,
       requestedCount: clampCount(count),
       returnedCount: selectedQuestions.length,
       questions: selectedQuestions.map((question) => toResponseQuestion(question, topicDoc.name))
-    });
+    }, "Questions retrieved successfully", 200);
   } catch (error) {
     next(error);
   }
@@ -158,12 +156,12 @@ const attemptQuestion = async (req, res, next) => {
     const { questionId, userAnswer } = req.body;
 
     if (!questionId || userAnswer === undefined) {
-      return res.status(400).json({ message: "questionId and userAnswer are required." });
+      return sendError(res, "questionId and userAnswer are required.", 400);
     }
 
     const question = await Question.findById(questionId).populate("topicId", "name");
     if (!question) {
-      return res.status(404).json({ message: "Question not found." });
+      return sendError(res, "Question not found.", 404);
     }
 
     let evaluation;
@@ -237,8 +235,7 @@ const attemptQuestion = async (req, res, next) => {
 
     await recordUserActivity(req.user._id, "question_answered", attempt._id);
 
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, {
       isCorrect: evaluation.isCorrect,
       score: evaluation.score,
       matchedKeywords: evaluation.matchedKeywords,
@@ -258,7 +255,7 @@ const attemptQuestion = async (req, res, next) => {
         skillName: attempt.skillName,
         difficulty: attempt.difficulty
       }
-    });
+    }, "Attempt evaluated successfully", 200);
   } catch (error) {
     next(error);
   }
@@ -315,7 +312,7 @@ exports.getUserStats = async (req, res, next) => {
         )
       : ["Great consistency so far. Increase the difficulty or switch topics to keep improving."];
 
-    return res.status(200).json({
+    return sendSuccess(res, {
       totalAttempts,
       answeredQuestions,
       accuracy,
@@ -323,7 +320,7 @@ exports.getUserStats = async (req, res, next) => {
       weakTopics,
       suggestions,
       readiness
-    });
+    }, "Stats retrieved successfully", 200);
   } catch (error) {
     next(error);
   }

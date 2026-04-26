@@ -1,11 +1,19 @@
 import { motion as Motion } from 'framer-motion'
-import { CheckCircle2, MessageSquareDashed, Send, X, XCircle } from 'lucide-react'
+import { CheckCircle2, Circle, MessageSquareDashed, Send, X } from 'lucide-react'
 
-function AnswerPanel({ question, answer, onChange, onSubmit, onClose, submitting, existingAttempt }) {
+/**
+ * AnswerPanel
+ *
+ * MCQ  (question.options.length > 0) → radio button list
+ * Theory                             → free-text textarea
+ *
+ * onSubmit() is called with no args — the parent reads `answer` state.
+ */
+function AnswerPanel({ question, answer, onChange, onSubmit, onClose, submitting }) {
   if (!question) return null
 
-  const minLen = 10
-  const canSubmit = answer.trim().length >= minLen && !submitting
+  const isMcq = Array.isArray(question.options) && question.options.length > 0
+  const canSubmit = answer.trim().length >= 1 && !submitting
 
   return (
     <Motion.div
@@ -31,7 +39,7 @@ function AnswerPanel({ question, answer, onChange, onSubmit, onClose, submitting
           </div>
           <div>
             <p className="text-[11px] font-medium uppercase tracking-widest text-white/35">
-              Your Answer
+              {isMcq ? 'Select the Correct Option' : 'Your Answer'}
             </p>
             <p className="mt-0.5 text-sm leading-snug text-almond">
               {question.question}
@@ -46,71 +54,83 @@ function AnswerPanel({ question, answer, onChange, onSubmit, onClose, submitting
         </button>
       </div>
 
-      {/* Previous attempt banner */}
-      {existingAttempt && (
-        <div
-          className="flex items-start gap-2.5 border-b border-white/[0.06] px-5 py-3"
-          style={{ background: 'rgba(59,130,246,0.06)' }}
-        >
-          <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-blue-400" />
-          <p className="text-xs text-white/60">
-            You've attempted this{' '}
-            <span className="font-semibold text-blue-300">{existingAttempt.attemptCount}×</span> — previous answer on file.
-            Submitting again increments your attempt counter.
-          </p>
-        </div>
-      )}
-
-      {/* Textarea */}
+      {/* Input area */}
       <div className="px-5 py-4">
-        <textarea
-          rows={6}
-          value={answer}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Type your answer here… Be thorough and explain your reasoning."
-          className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-almond placeholder-white/20 outline-none transition-all focus:border-blue-500/50 focus:bg-white/[0.07] focus:shadow-[0_0_0_1px_rgba(59,130,246,0.2)]"
-        />
-        <div className="mt-1.5 flex items-center justify-between">
-          <p className={`text-[11px] ${answer.trim().length < minLen ? 'text-white/30' : 'text-white/40'}`}>
-            {answer.trim().length} characters
-            {answer.trim().length < minLen && ` (min ${minLen})`}
-          </p>
-
-          {/* Self-evaluate quick buttons */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={!canSubmit}
-              onClick={() => onSubmit(false)}
-              className="flex items-center gap-1.5 rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
-            >
-              <XCircle size={12} />
-              Incorrect
-            </button>
-            <button
-              type="button"
-              disabled={!canSubmit}
-              onClick={() => onSubmit(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-40"
-            >
-              <CheckCircle2 size={12} />
-              Correct
-            </button>
+        {isMcq ? (
+          /* ── MCQ Radio Buttons ── */
+          <div className="space-y-2.5">
+            {question.options.map((opt, i) => {
+              const selected = answer === opt
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onChange(opt)}
+                  className="flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all"
+                  style={{
+                    borderColor: selected ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.08)',
+                    background: selected
+                      ? 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(59,130,246,0.08))'
+                      : 'rgba(255,255,255,0.03)',
+                    boxShadow: selected ? '0 0 0 1px rgba(139,92,246,0.25)' : 'none',
+                  }}
+                >
+                  <span
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
+                    style={{
+                      borderColor: selected ? 'rgba(139,92,246,0.7)' : 'rgba(255,255,255,0.2)',
+                    }}
+                  >
+                    {selected
+                      ? <CheckCircle2 size={13} className="text-purple-400" />
+                      : <Circle size={13} className="text-white/20" />
+                    }
+                  </span>
+                  <span
+                    className="font-medium"
+                    style={{ color: selected ? '#e2d9f3' : 'rgba(255,255,255,0.65)' }}
+                  >
+                    <span className="mr-2 text-[11px] font-bold"
+                      style={{ color: selected ? '#a78bfa' : 'rgba(255,255,255,0.3)' }}>
+                      {String.fromCharCode(65 + i)}.
+                    </span>
+                    {opt}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-        </div>
+        ) : (
+          /* ── Theory Textarea ── */
+          <>
+            <textarea
+              rows={6}
+              value={answer}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="Type your answer here… Explain your reasoning clearly."
+              className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-almond placeholder-white/20 outline-none transition-all focus:border-blue-500/50 focus:bg-white/[0.07] focus:shadow-[0_0_0_1px_rgba(59,130,246,0.2)]"
+            />
+            <p className={`mt-1.5 text-[11px] ${answer.trim().length < 10 ? 'text-white/30' : 'text-white/40'}`}>
+              {answer.trim().length} characters
+              {answer.trim().length < 10 && ' (min 10)'}
+            </p>
+          </>
+        )}
       </div>
 
-      {/* Submit bar */}
+      {/* Submit */}
       <div className="border-t border-white/[0.07] px-5 py-4">
         <p className="mb-3 text-[11px] text-white/35">
-          Self-evaluate — did you answer correctly? The system records your attempt and shows model feedback.
+          {isMcq
+            ? 'Select an option above, then submit — the system will check your answer.'
+            : 'Submit your answer — the system will evaluate it automatically.'}
         </p>
         <Motion.button
           type="button"
           disabled={!canSubmit}
           whileHover={{ scale: canSubmit ? 1.02 : 1 }}
           whileTap={{ scale: canSubmit ? 0.97 : 1 }}
-          onClick={() => onSubmit(true)}
+          onClick={onSubmit}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50"
           style={{
             background: canSubmit
@@ -124,7 +144,7 @@ function AnswerPanel({ question, answer, onChange, onSubmit, onClose, submitting
           ) : (
             <>
               <Send size={14} />
-              Submit & Get Feedback
+              {isMcq ? 'Submit Answer' : 'Submit & Evaluate'}
             </>
           )}
         </Motion.button>

@@ -148,6 +148,17 @@ const resumeAnalyzeValidator = [
   })
 ];
 
+const aiGenerateValidator = [
+  body("topic").optional().trim(),
+  body("skill").optional().trim(),
+  body("difficulty").optional().isIn(["Beginner", "Intermediate", "Advanced", "Easy", "Medium", "Hard"]).withMessage("Invalid difficulty level")
+];
+
+const aiAnswerValidator = [
+  body("questionId").trim().notEmpty().withMessage("questionId is required"),
+  body("userAnswer").trim().notEmpty().withMessage("userAnswer is required")
+];
+
 module.exports = {
   registerValidator,
   loginValidator,
@@ -160,5 +171,7 @@ module.exports = {
   resumeGenerateValidator,
   resumeAnalyzeValidator,
   recruiterRegisterValidator,
-  recruiterLoginValidator
+  recruiterLoginValidator,
+  aiGenerateValidator,
+  aiAnswerValidator
 };

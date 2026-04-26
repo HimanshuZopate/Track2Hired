@@ -21,16 +21,16 @@ const {
   getPerformanceTrends,
 } = require("../services/analyticsService");
 
-const INTERNAL_SERVER_ERROR = "Internal server error";
+const { sendSuccess, sendError } = require("../utils/responseHandler");
 
 // ─── GET /api/analytics/summary ───────────────────────────────────────────────
 exports.getSummary = async (req, res) => {
   try {
     const data = await getSummary(req.user._id);
-    return res.json({ success: true, data });
+    return sendSuccess(res, data, "Summary retrieved", 200);
   } catch (error) {
     console.error("[Analytics] getSummary error:", error.message);
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -38,10 +38,10 @@ exports.getSummary = async (req, res) => {
 exports.getSkills = async (req, res) => {
   try {
     const data = await getSkillsAnalysis(req.user._id);
-    return res.json({ success: true, data });
+    return sendSuccess(res, data, "Skills analysis retrieved", 200);
   } catch (error) {
     console.error("[Analytics] getSkills error:", error.message);
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -50,10 +50,10 @@ exports.getReadinessTrend = async (req, res) => {
   try {
     const days = Number(req.query.days) || 30;
     const data = await getReadinessTrend(req.user._id, days);
-    return res.json({ success: true, data });
+    return sendSuccess(res, data, "Readiness trend retrieved", 200);
   } catch (error) {
     console.error("[Analytics] getReadinessTrend error:", error.message);
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -61,10 +61,10 @@ exports.getReadinessTrend = async (req, res) => {
 exports.getPerformance = async (req, res) => {
   try {
     const data = await getPerformance(req.user._id);
-    return res.json({ success: true, data });
+    return sendSuccess(res, data, "Performance retrieved", 200);
   } catch (error) {
     console.error("[Analytics] getPerformance error:", error.message);
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -72,10 +72,10 @@ exports.getPerformance = async (req, res) => {
 exports.getSuggestions = async (req, res) => {
   try {
     const data = await getSuggestions(req.user._id);
-    return res.json({ success: true, data });
+    return sendSuccess(res, data, "Suggestions retrieved", 200);
   } catch (error) {
     console.error("[Analytics] getSuggestions error:", error.message);
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -85,9 +85,9 @@ exports.getSuggestions = async (req, res) => {
 exports.getPerformanceSummary = async (req, res) => {
   try {
     const summary = await generatePerformanceSummary(req.user._id);
-    return res.json({ summary });
+    return sendSuccess(res, { summary }, "Summary retrieved", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -99,9 +99,9 @@ exports.getPerformanceTrends = async (req, res) => {
       calculateImprovementRate(req.user._id),
       calculateConsistencyScore(req.user._id),
     ]);
-    return res.json({ trends, metrics: { improvementRate, consistencyScore } });
+    return sendSuccess(res, { trends, metrics: { improvementRate, consistencyScore } }, "Trends retrieved", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -112,8 +112,8 @@ exports.getWeakAreas = async (req, res) => {
       detectWeakSkills(req.user._id),
       detectStagnation(req.user._id),
     ]);
-    return res.json({ weakAreas: { weakestSkills, stagnationFlag } });
+    return sendSuccess(res, { weakAreas: { weakestSkills, stagnationFlag } }, "Weak areas retrieved", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };

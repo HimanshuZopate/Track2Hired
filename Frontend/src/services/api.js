@@ -121,7 +121,26 @@ api.interceptors.request.use((config) => {
 
 // ─── Response interceptor — handle 401 (expired / invalid token) ──────────────
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Unwrap the standardized backend response so existing frontend components do not break
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      let unwrappedData = response.data.data;
+      const serverMessage = response.data.message;
+
+      if (unwrappedData === null || unwrappedData === undefined) {
+        unwrappedData = { message: serverMessage };
+      } else if (typeof unwrappedData === 'object' && !Array.isArray(unwrappedData)) {
+        if (!('message' in unwrappedData)) {
+          unwrappedData.message = serverMessage;
+        }
+      }
+
+      response.data = unwrappedData;
+      response.serverMessage = serverMessage;
+      response.success = response.data.success;
+    }
+    return response;
+  },
   (error) => {
     if (error?.response?.status === 401) {
       clearAuthToken()
@@ -130,6 +149,14 @@ api.interceptors.response.use(
         window.location.href = '/login'
       }
     }
+    
+    // Normalize error message for easy access in components
+    if (error.response?.data?.message) {
+      error.serverMessage = error.response.data.message;
+    } else {
+      error.serverMessage = 'An unexpected error occurred.';
+    }
+
     return Promise.reject(error)
   },
 )

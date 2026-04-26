@@ -1,9 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
-const INTERNAL_SERVER_ERROR = "Internal server error";
-
+const { sendSuccess, sendError } = require("../utils/responseHandler");
 
 // ================= REGISTER =================
 exports.registerUser = async (req, res) => {
@@ -11,13 +9,13 @@ exports.registerUser = async (req, res) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      return sendError(res, "All fields are required", 400);
     }
 
     const userExists = await User.findOne({ email });
 
     if (userExists) {
-      return res.status(409).json({ message: "User already exists" });
+      return sendError(res, "User already exists", 409);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -30,15 +28,15 @@ exports.registerUser = async (req, res) => {
 
     const token = generateToken(user._id, user.role || "student");
 
-    res.status(201).json({
+    return sendSuccess(res, {
       _id: user._id,
       name: user.name,
       email: user.email,
       token
-    });
+    }, "Registration successful", 201);
 
   } catch (error) {
-    res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -51,26 +49,26 @@ exports.loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return sendError(res, "Invalid credentials", 401);
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return sendError(res, "Invalid credentials", 401);
     }
 
     const token = generateToken(user._id, user.role || "student");
 
-    res.json({
+    return sendSuccess(res, {
       _id: user._id,
       name: user.name,
       email: user.email,
       token
-    });
+    }, "Login successful", 200);
 
   } catch (error) {
-    res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 

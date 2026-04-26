@@ -78,8 +78,8 @@ export default function Practice() {
         );
       }
     } catch (e) {
-      console.error("Failed to generate questions", e);
-      setSessionMessage('Unable to load questions right now. Please try again.');
+      console.error("Failed to generate questions", e?.serverMessage || e?.message || e);
+      setSessionMessage(e?.serverMessage || 'Unable to load questions right now. Please try again.');
     } finally {
       setGenerating(false);
     }

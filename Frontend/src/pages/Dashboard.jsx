@@ -47,11 +47,24 @@ const buildConsistencyData = (trends = []) =>
   }))
 
 const buildTimeline = (history = []) =>
-  history.slice(0, 8).map((event) => ({
-    type: event.activityType,
-    label: event.activityType === 'TaskComplete' ? 'Completed a task milestone' : 'Updated a skill confidence signal',
-    date: new Date(event.activityDate || event.createdAt).toLocaleDateString(),
-  }))
+  history.slice(0, 6).map((event) => {
+    const type = String(event.activityType || '');
+    let label = 'Logged activity';
+    
+    if (type.includes('task') || type === 'TaskComplete') {
+      label = event.count > 1 ? `Completed ${event.count} tasks` : 'Completed a task milestone';
+    } else if (type.includes('question') || type === 'QuestionAttempt' || type === 'AIPractice') {
+      label = event.count > 1 ? `Practiced ${event.count} questions` : 'Completed an AI practice session';
+    } else if (type.includes('skill') || type === 'SkillUpdate') {
+      label = event.count > 1 ? `Updated ${event.count} skills` : 'Improved a skill level';
+    }
+    
+    return {
+      type,
+      label,
+      date: new Date(event.activityDate || event.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    }
+  })
 
 const buildTrendData = (trends = [], readiness = 0) => {
   let rolling = Number(readiness || 0)

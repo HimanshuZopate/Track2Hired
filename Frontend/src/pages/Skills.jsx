@@ -20,8 +20,8 @@ const safeCall = async (fn) => {
     const res = await fn()
     return { data: res.data, error: null }
   } catch (err) {
-    console.error('[Skills API Error]', err?.response?.status, err?.response?.data || err?.message)
-    return { data: null, error: err?.response?.data?.message || err?.message || 'Request failed' }
+    console.error('[Skills API Error]', err?.response?.status, err?.serverMessage || err?.message)
+    return { data: null, error: err?.serverMessage || err?.message || 'Request failed' }
   }
 }
 

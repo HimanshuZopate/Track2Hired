@@ -3,6 +3,7 @@ import {
   AlertCircle,
   BookOpen,
   Brain,
+  CheckCircle2,
   ClipboardList,
   History,
   Trophy,
@@ -16,13 +17,11 @@ import QuestionCard from '../components/ai/QuestionCard'
 import Sidebar from '../components/Sidebar'
 import api from '../services/api'
 
-// ─── safe API wrapper ─────────────────────────────────────────────────────────
+// ─── safe API call ────────────────────────────────────────────────────────────
 const safeCall = async (fn) => {
-  try {
-    const res = await fn()
-    return { data: res.data, error: null }
-  } catch (err) {
-    console.error('[AI API]', err?.response?.status, err?.response?.data || err?.message)
+  try   { return { data: (await fn()).data, error: null } }
+  catch (err) {
+    console.error('[AI]', err?.response?.status, err?.response?.data || err?.message)
     return { data: null, error: err?.response?.data?.message || err?.message || 'Request failed' }
   }
 }
@@ -35,7 +34,7 @@ function Toast({ toast }) {
       <Motion.div
         key={toast.id}
         initial={{ opacity: 0, y: 24, scale: 0.92 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        animate={{ opacity: 1, y: 0,   scale: 1    }}
         exit={{ opacity: 0, y: 16, scale: 0.9 }}
         transition={{ duration: 0.28 }}
         className="fixed bottom-24 left-1/2 z-[70] -translate-x-1/2 rounded-xl border px-5 py-3 text-sm font-medium backdrop-blur-md md:bottom-8"
@@ -52,63 +51,24 @@ function Toast({ toast }) {
 }
 
 // ─── History drawer ───────────────────────────────────────────────────────────
-function HistoryDrawer({ open, onClose, history, onRestore }) {
+function HistoryDrawer({ open, onClose }) {
   return (
     <AnimatePresence>
       {open && (
         <>
-          <Motion.div
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-          <Motion.aside
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col border-l border-white/10 bg-[#111218] p-6"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', stiffness: 240, damping: 26 }}
-          >
+          <Motion.div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
+          <Motion.aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col border-l border-white/10 bg-[#111218] p-6" initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 240, damping: 26 }}>
             <div className="mb-5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <History size={16} className="text-blue-400" />
                 <h2 className="text-sm font-semibold text-almond">Session History</h2>
               </div>
-              <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
-                <X size={16} />
-              </button>
+              <button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><X size={16} /></button>
             </div>
-
-            {history.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center text-center">
-                <BookOpen size={28} className="mb-3 text-white/20" />
-                <p className="text-sm text-white/35">No sessions yet. Generate your first set!</p>
-              </div>
-            ) : (
-              <div className="flex-1 space-y-3 overflow-y-auto">
-                {history.map((h, i) => (
-                  <button
-                    key={h._id || i}
-                    onClick={() => { onRestore(h); onClose() }}
-                    className="w-full rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 text-left transition hover:border-blue-400/25 hover:bg-blue-500/[0.06]"
-                  >
-                    <p className="text-sm font-medium text-almond">{h.skill}</p>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      <span className="text-[11px] text-white/40">{h.difficulty}</span>
-                      <span className="text-[11px] text-white/25">·</span>
-                      <span className="text-[11px] text-white/40">{h.type}</span>
-                      <span className="text-[11px] text-white/25">·</span>
-                      <span className="text-[11px] text-white/40">{h.questions?.length || 0}q</span>
-                    </div>
-                    <p className="mt-1 text-[10px] text-white/25">
-                      {new Date(h.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="flex flex-1 flex-col items-center justify-center text-center">
+              <BookOpen size={28} className="mb-3 text-white/20" />
+              <p className="text-sm text-white/35">AI sessions are not persisted — start a new session anytime.</p>
+            </div>
           </Motion.aside>
         </>
       )}
@@ -116,49 +76,94 @@ function HistoryDrawer({ open, onClose, history, onRestore }) {
   )
 }
 
-// ─── Empty questions state ────────────────────────────────────────────────────
-function EmptyQuestions() {
+// ─── Empty state ──────────────────────────────────────────────────────────────
+function EmptyState() {
   return (
-    <Motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-20 text-center"
-    >
-      <div
-        className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-        style={{ background: 'rgba(139,92,246,0.1)', boxShadow: '0 0 24px rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.2)' }}
-      >
+    <Motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-20 text-center">
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: 'rgba(139,92,246,0.1)', boxShadow: '0 0 24px rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.2)' }}>
         <Brain size={24} className="text-purple-400" />
       </div>
       <h3 className="text-base font-semibold text-almond">No questions yet</h3>
-      <p className="mt-1.5 max-w-xs text-sm text-white/40">
-        Configure your session on the left and click <strong className="text-white/70">Generate Questions</strong>.
-      </p>
+      <p className="mt-1.5 max-w-xs text-sm text-white/40">Configure your session on the left and click <strong className="text-white/70">Generate Questions</strong>.</p>
     </Motion.div>
   )
 }
 
-// ─── Session stats bar ────────────────────────────────────────────────────────
-function SessionStats({ questions, attempts }) {
-  const total     = questions.length
-  const attempted = Object.keys(attempts).length
-  const correct   = Object.values(attempts).filter((a) => a.isCorrect).length
+// ─── MCQ Score Summary ────────────────────────────────────────────────────────
+function McqScoreSummary({ results, total, skillProgress, onReset }) {
+  const correct = Object.values(results).filter(r => r.correct).length
+  const pct     = total > 0 ? Math.round((correct / total) * 100) : 0
+  const great   = pct >= 70
 
   return (
     <Motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mb-4 grid grid-cols-3 gap-3"
+      initial={{ opacity: 0, scale: 0.93, y: 16 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+      className="rounded-2xl border overflow-hidden"
+      style={{
+        borderColor: great ? 'rgba(16,185,129,0.35)' : 'rgba(245,158,11,0.35)',
+        background: great
+          ? 'linear-gradient(145deg,rgba(16,185,129,0.09),rgba(14,15,22,0.95))'
+          : 'linear-gradient(145deg,rgba(245,158,11,0.09),rgba(14,15,22,0.95))',
+        boxShadow: great ? '0 0 0 1px rgba(16,185,129,0.15),0 8px 40px rgba(16,185,129,0.08)' : '0 0 0 1px rgba(245,158,11,0.15),0 8px 40px rgba(245,158,11,0.07)',
+      }}
     >
-      {[
-        { label: 'Questions', value: total,     color: 'text-white' },
-        { label: 'Attempted', value: attempted, color: 'text-blue-300' },
-        { label: 'Correct',   value: correct,   color: 'text-emerald-300' },
-      ].map((s) => (
-        <div
-          key={s.label}
-          className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-center"
+      <div className="flex items-center gap-4 px-5 py-4 border-b border-white/[0.06]">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl font-black"
+          style={{ background: great ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: great ? '#34d399' : '#fbbf24' }}>
+          {pct}%
+        </div>
+        <div>
+          <p className={`text-base font-bold ${great ? 'text-emerald-300' : 'text-amber-300'}`}>
+            {great ? '🎉 Great work!' : 'Keep practicing!'}
+          </p>
+          <p className="text-xs text-white/45">{correct} of {total} questions correct</p>
+        </div>
+      </div>
+
+      <div className="px-5 py-4 space-y-3">
+        {/* Score bar */}
+        <div className="h-2 w-full rounded-full bg-white/[0.06] overflow-hidden">
+          <Motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            className="h-full rounded-full"
+            style={{ background: great ? 'linear-gradient(90deg,#34d399,#10b981)' : 'linear-gradient(90deg,#fbbf24,#f59e0b)' }}
+          />
+        </div>
+
+        {skillProgress?.improved && (
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/[0.07] px-4 py-2.5 text-xs text-cyan-200">
+            🚀 <strong>{skillProgress.skillName}</strong> confidence improved by <strong>+{skillProgress.delta}</strong> → <strong>{skillProgress.newConfidence}/5</strong>
+          </div>
+        )}
+
+        <button
+          onClick={onReset}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
         >
+          Try Another Session
+        </button>
+      </div>
+    </Motion.div>
+  )
+}
+
+// ─── Session stats (Theory mode) ──────────────────────────────────────────────
+function SessionStats({ questions, attempts }) {
+  const total = questions.length
+  const attempted = Object.keys(attempts).length
+  const correct   = Object.values(attempts).filter(a => a.correct).length
+  return (
+    <Motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-4 grid grid-cols-3 gap-3">
+      {[
+        { label: 'Questions', value: total,     color: 'text-white'        },
+        { label: 'Attempted', value: attempted, color: 'text-blue-300'     },
+        { label: 'Correct',   value: correct,   color: 'text-emerald-300'  },
+      ].map(s => (
+        <div key={s.label} className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-center">
           <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
           <p className="text-[10px] text-white/35">{s.label}</p>
         </div>
@@ -167,160 +172,130 @@ function SessionStats({ questions, attempts }) {
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// Main Page
+// ═══════════════════════════════════════════════════════════════════════════════
 function AIPractice() {
-  const [form, setForm] = useState({ skill: '', difficulty: 'Intermediate', type: 'Theory', count: 5 })
+  const [form, setForm] = useState({ skill: '', difficulty: 'Intermediate', type: 'MCQ', count: 5 })
 
-  // Questions state
+  // Shared
   const [questions,   setQuestions]   = useState([])
-  const [generatedId, setGeneratedId] = useState(null)
+  const [sessionId,   setSessionId]   = useState(null)
+  const [sessionType, setSessionType] = useState('MCQ')   // tracks type of current session
   const [generating,  setGenerating]  = useState(false)
   const [genError,    setGenError]    = useState('')
   const [fallbackMsg, setFallbackMsg] = useState('')
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [toast,       setToast]       = useState(null)
 
-  // Interaction state
-  const [activeId,    setActiveId]    = useState(null)
-  const [answer,      setAnswer]      = useState('')
-  const [submitting,  setSubmitting]  = useState(false)
-  const [feedback,    setFeedback]    = useState(null) // { isCorrect, attemptCount, question }
+  // ── MCQ state ────────────────────────────────────────────────────────────
+  const [mcqAnswers,    setMcqAnswers]    = useState({})   // { qId: selectedOption }
+  const [mcqResults,    setMcqResults]    = useState(null) // { qId: { correct, correctAnswer, explanation } }
+  const [mcqSubmitting, setMcqSubmitting] = useState(false)
+  const [mcqSkill,      setMcqSkill]      = useState(null) // skillProgress after batch eval
 
-  // Per-question attempt cache { questionId → attempt doc }
-  const [attempts,    setAttempts]    = useState({})
+  // ── Theory state ─────────────────────────────────────────────────────────
+  const [activeId,   setActiveId]   = useState(null)
+  const [answer,     setAnswer]     = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [feedback,   setFeedback]   = useState(null)
+  const [attempts,   setAttempts]   = useState({})          // { qId: { correct } }
 
-  // History drawer
-  const [history,      setHistory]      = useState([])
-  const [historyOpen,  setHistoryOpen]  = useState(false)
-  const [historyLoaded,setHistoryLoaded]= useState(false)
-
-  // Toast
-  const [toast, setToast] = useState(null)
   const showToast = useCallback((message, type = 'success') => {
     setToast({ id: Date.now(), message, type })
     setTimeout(() => setToast(null), 3400)
   }, [])
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const setField = useCallback((key, val) => {
-    setForm((prev) => ({ ...prev, [key]: val }))
-  }, [])
+  const setField = useCallback((key, val) => setForm(prev => ({ ...prev, [key]: val })), [])
 
-  const activeQuestion = useMemo(
-    () => questions.find((q) => q.id === activeId) || null,
-    [questions, activeId],
-  )
+  const activeQuestion = useMemo(() => questions.find(q => q.id === activeId) || null, [questions, activeId])
+  const isMcqSession   = sessionType === 'MCQ'
+  const mcqAnsweredCount = Object.keys(mcqAnswers).length
 
   // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
-    if (!form.skill.trim()) { showToast('Enter a skill first', 'error'); return }
-    setGenerating(true)
-    setGenError('')
-    setFallbackMsg('')
-    setQuestions([])
-    setActiveId(null)
-    setAnswer('')
-    setFeedback(null)
-    setAttempts({})
-    setGeneratedId(null)
+    if (!form.skill.trim()) { showToast('Enter a topic first', 'error'); return }
+
+    setGenerating(true); setGenError(''); setFallbackMsg('')
+    setQuestions([]); setSessionId(null); setSessionType(form.type)
+    setActiveId(null); setAnswer(''); setFeedback(null); setAttempts({})
+    setMcqAnswers({}); setMcqResults(null); setMcqSkill(null)
 
     const { data, error } = await safeCall(() =>
       api.post('/api/ai/generate', {
-        skill:      form.skill.trim(),
-        difficulty: form.difficulty,
-        type:       form.type,
-        count:      form.count,
-      }),
+        skill: form.skill.trim(), difficulty: form.difficulty,
+        type: form.type, count: form.count,
+      })
     )
     setGenerating(false)
 
     if (error) { setGenError(error); return }
 
     setQuestions(data.questions || [])
-    setGeneratedId(data.generatedId || null)
-
-    if (data.usedFallback) {
-      setFallbackMsg(data.providerError
-        ? `AI provider issue (${data.providerError}). Using curated backup questions.`
-        : 'AI provider unavailable — showing curated backup questions.',
-      )
-    }
-    showToast(`${data.questions?.length || 0} questions ready!`)
+    setSessionId(data.sessionId || data.generatedId || null)
+    if (data.usedFallback) setFallbackMsg('AI busy — showing curated backup questions.')
+    showToast(`${data.questions?.length || 0} ${form.type} questions ready!`)
   }
 
-  // ── Select question ───────────────────────────────────────────────────────
-  const handleSelect = (id) => {
-    setActiveId(id)
-    setAnswer('')
-    setFeedback(null)
+  // ── MCQ: select option ────────────────────────────────────────────────────
+  const handleMcqSelect = useCallback((qId, option) => {
+    if (mcqResults) return // locked after submit
+    setMcqAnswers(prev => ({ ...prev, [qId]: option }))
+  }, [mcqResults])
+
+  // ── MCQ: submit all ───────────────────────────────────────────────────────
+  const handleMcqSubmit = async () => {
+    if (mcqAnsweredCount === 0) { showToast('Select at least one answer', 'error'); return }
+    setMcqSubmitting(true)
+
+    const { data, error } = await safeCall(() =>
+      api.post('/api/ai/evaluate-all', { sessionId, answers: mcqAnswers })
+    )
+    setMcqSubmitting(false)
+
+    if (error) { showToast(error, 'error'); return }
+
+    setMcqResults(data.results)
+    setMcqSkill(data.skillProgress)
+    const c = data.correctCount, t = data.total
+    showToast(`${c}/${t} correct${data.skillProgress?.improved ? ' — skill improved! 🚀' : ''}`, c > 0 ? 'success' : 'error')
   }
 
-  // ── Submit answer ─────────────────────────────────────────────────────────
-  const handleSubmit = async (isCorrect) => {
-    if (!activeQuestion || answer.trim().length < 10) return
+  // ── Theory: select question ───────────────────────────────────────────────
+  const handleTheorySelect = (id) => { setActiveId(id); setAnswer(''); setFeedback(null) }
+
+  // ── Theory: submit answer ─────────────────────────────────────────────────
+  const handleTheorySubmit = async () => {
+    const isMcqQuestion = Array.isArray(activeQuestion?.options) && activeQuestion.options.length > 0
+    const minLen = isMcqQuestion ? 1 : 10
+    if (!activeQuestion || answer.trim().length < minLen) return
     setSubmitting(true)
 
     const { data, error } = await safeCall(() =>
-      api.post('/api/ai/attempt', {
-        questionId: activeQuestion.id,
-        userAnswer: answer.trim(),
-        isCorrect,
-        generatedId,
-        skillName: form.skill.trim(),
-        difficulty: form.difficulty,
-      }),
+      api.post('/api/ai/answer', {
+        sessionId, questionId: activeQuestion.id,
+        userAnswer: answer.trim(), topic: form.skill.trim(), difficulty: form.difficulty,
+      })
     )
     setSubmitting(false)
 
     if (error) { showToast(error, 'error'); return }
 
-    const atm = data.attempt
-    setAttempts((prev) => ({ ...prev, [activeQuestion.id]: atm }))
+    setAttempts(prev => ({ ...prev, [activeQuestion.id]: { correct: data.correct } }))
     setFeedback({
-      isCorrect,
-      attemptCount: atm.attemptCount,
-      attempt: atm,
+      isCorrect: data.correct, matchScore: data.matchScore,
+      correctAnswer: data.correctAnswer, explanation: data.explanation,
       skillProgress: data.skillProgress,
-      readiness: data.readiness,
     })
     showToast(
-      isCorrect
-        ? data.skillProgress?.improved
-          ? '✓ Correct! Your skill improved.'
-          : '✓ Correct! Great job.'
-        : 'Noted — review the model answer.'
+      data.correct ? (data.skillProgress?.improved ? '✓ Correct! Skill improved.' : '✓ Correct!') : 'Not quite — review the model answer.',
+      data.correct ? 'success' : 'error',
     )
   }
 
-  // ── Reset feedback → allow re-answer ─────────────────────────────────────
-  const resetFeedback = () => {
-    setFeedback(null)
-    setAnswer('')
-  }
+  const resetFeedback = () => { setFeedback(null); setAnswer('') }
 
-  // ── Load history ──────────────────────────────────────────────────────────
-  const loadHistory = async () => {
-    if (historyLoaded && history.length) { setHistoryOpen(true); return }
-    const { data, error } = await safeCall(() => api.get('/api/ai/history'))
-    if (error) { showToast('Could not load history', 'error'); return }
-    setHistory(data.history || [])
-    setHistoryLoaded(true)
-    setHistoryOpen(true)
-  }
-
-  // ── Restore a history session ─────────────────────────────────────────────
-  const restoreSession = (session) => {
-    setForm((prev) => ({
-      ...prev,
-      skill:      session.skill,
-      difficulty: session.difficulty,
-      type:       session.type,
-    }))
-    setQuestions(session.questions || [])
-    setActiveId(null)
-    setAnswer('')
-    setFeedback(null)
-    setAttempts({})
-    showToast(`Restored: ${session.skill} session`)
-  }
+  const correctCount = Object.values(attempts).filter(a => a.correct).length
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -339,78 +314,55 @@ function AIPractice() {
       >
         <div className="mx-auto max-w-7xl px-4 py-8">
 
-          {/* ── Page header ── */}
+          {/* Header */}
           <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="mb-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-widest text-blue-400/70">
-                <Brain size={11} />
-                AI Powered
+                <Brain size={11} /> AI Powered
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-almond">
                 Interview{' '}
-                <span className="text-blue-400" style={{ textShadow: '0 0 20px rgba(59,130,246,0.6)' }}>
-                  Practice
-                </span>
+                <span className="text-blue-400" style={{ textShadow: '0 0 20px rgba(59,130,246,0.6)' }}>Practice</span>
               </h1>
               <p className="mt-1 text-sm text-white/40">
-                Generate dynamic questions, practice answers, and track your progress
+                Generate real interview questions, answer them, and watch your skills grow.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              {/* History button */}
-              <Motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={loadHistory}
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/[0.09] hover:text-white"
-              >
-                <History size={14} />
-                History
+              <Motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} onClick={() => setHistoryOpen(true)}
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/[0.09] hover:text-white">
+                <History size={14} /> History
               </Motion.button>
-
-              {/* Stats chip */}
-              {questions.length > 0 && (
-                <Motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-1.5 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300"
-                >
-                  <Trophy size={12} />
-                  {Object.values(attempts).filter((a) => a.isCorrect).length}/{questions.length} correct
+              {!isMcqSession && questions.length > 0 && (
+                <Motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-1.5 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300">
+                  <Trophy size={12} /> {correctCount}/{questions.length} correct
                 </Motion.div>
               )}
             </div>
           </div>
 
-          {/* ── Two-column layout ── */}
+          {/* Two-column layout */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
 
-            {/* ── LEFT: Input Controls ── */}
+            {/* LEFT: Controls */}
             <div className="lg:sticky lg:top-6 lg:self-start">
               <InputControls
-                form={form}
-                onChange={setField}
-                onGenerate={handleGenerate}
-                loading={generating}
-                disabled={generating}
+                form={form} onChange={setField}
+                onGenerate={handleGenerate} loading={generating} disabled={generating}
               />
             </div>
 
-            {/* ── RIGHT: Questions + Answer + Feedback ── */}
+            {/* RIGHT: Content */}
             <div className="space-y-5">
 
               {/* Fallback banner */}
               <AnimatePresence>
                 {fallbackMsg && (
-                  <Motion.div
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-start gap-3 rounded-xl border border-amber-400/25 bg-amber-500/[0.08] px-4 py-3 text-xs text-amber-300"
-                  >
-                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                    {fallbackMsg}
+                  <Motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="flex items-start gap-3 rounded-xl border border-amber-400/25 bg-amber-500/[0.08] px-4 py-3 text-xs text-amber-300">
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" /> {fallbackMsg}
                   </Motion.div>
                 )}
               </AnimatePresence>
@@ -418,28 +370,19 @@ function AIPractice() {
               {/* Generation error */}
               <AnimatePresence>
                 {genError && (
-                  <Motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-start gap-3 rounded-xl border border-red-400/30 bg-red-500/[0.08] px-4 py-3 text-sm text-red-300"
-                  >
+                  <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="flex items-start gap-3 rounded-xl border border-red-400/30 bg-red-500/[0.08] px-4 py-3 text-sm text-red-300">
                     <AlertCircle size={15} className="mt-0.5 shrink-0" />
                     <div>
                       <p className="font-semibold">Generation failed</p>
                       <p className="mt-0.5 text-xs opacity-80">{genError}</p>
-                      <button
-                        onClick={handleGenerate}
-                        className="mt-1.5 rounded-lg border border-red-400/25 px-2.5 py-1 text-xs hover:bg-red-500/10 transition"
-                      >
-                        Retry
-                      </button>
+                      <button onClick={handleGenerate} className="mt-1.5 rounded-lg border border-red-400/25 px-2.5 py-1 text-xs hover:bg-red-500/10 transition">Retry</button>
                     </div>
                   </Motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Loading state */}
+              {/* Loading skeletons */}
               {generating && (
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, i) => (
@@ -449,6 +392,12 @@ function AIPractice() {
                         <div className="flex-1 space-y-2">
                           <div className="h-3.5 w-4/5 animate-pulse rounded-lg bg-white/[0.08]" />
                           <div className="h-3 w-1/3 animate-pulse rounded-lg bg-white/[0.05]" />
+                          {/* Option skeletons for MCQ */}
+                          {form.type === 'MCQ' && (
+                            <div className="mt-3 space-y-1.5">
+                              {[1,2,3,4].map(j => <div key={j} className="h-8 animate-pulse rounded-xl bg-white/[0.04]" />)}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -456,13 +405,76 @@ function AIPractice() {
                 </div>
               )}
 
-              {/* Questions list */}
-              {!generating && questions.length > 0 && (
+              {/* ══════════ MCQ SESSION ══════════ */}
+              {!generating && isMcqSession && questions.length > 0 && (
                 <>
-                  {/* Stats bar */}
-                  <SessionStats questions={questions} attempts={attempts} />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/35">
+                      <ClipboardList size={12} />
+                      {questions.length} MCQ · {form.skill}
+                    </div>
+                    <span className="text-[11px] text-white/35">
+                      {mcqAnsweredCount}/{questions.length} answered
+                    </span>
+                  </div>
 
-                  {/* Section label */}
+                  <div className="space-y-3">
+                    <AnimatePresence mode="popLayout">
+                      {questions.map((q, i) => (
+                        <QuestionCard
+                          key={q.id}
+                          question={q}
+                          index={i}
+                          selectedAnswer={mcqAnswers[q.id]}
+                          onSelectAnswer={handleMcqSelect}
+                          result={mcqResults?.[q.id]}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Submit All — only if not yet submitted */}
+                  {!mcqResults && (
+                    <Motion.button
+                      disabled={mcqAnsweredCount === 0 || mcqSubmitting}
+                      whileHover={{ scale: mcqAnsweredCount > 0 ? 1.02 : 1 }}
+                      whileTap={{ scale: mcqAnsweredCount > 0 ? 0.97 : 1 }}
+                      onClick={handleMcqSubmit}
+                      className="flex w-full items-center justify-center gap-2.5 rounded-xl py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                      style={{
+                        background: mcqAnsweredCount > 0
+                          ? 'linear-gradient(135deg,rgba(16,185,129,0.85),rgba(59,130,246,0.85))'
+                          : 'rgba(255,255,255,0.06)',
+                        boxShadow: mcqAnsweredCount > 0 ? '0 0 30px rgba(16,185,129,0.3)' : 'none',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      {mcqSubmitting
+                        ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        : <><CheckCircle2 size={15} /> Submit All Answers ({mcqAnsweredCount}/{questions.length})</>
+                      }
+                    </Motion.button>
+                  )}
+
+                  {/* MCQ score summary */}
+                  {mcqResults && (
+                    <McqScoreSummary
+                      results={mcqResults}
+                      total={questions.length}
+                      skillProgress={mcqSkill}
+                      onReset={() => {
+                        setQuestions([]); setMcqAnswers({}); setMcqResults(null); setMcqSkill(null)
+                        setSessionId(null)
+                      }}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* ══════════ THEORY SESSION ══════════ */}
+              {!generating && !isMcqSession && questions.length > 0 && (
+                <>
+                  <SessionStats questions={questions} attempts={attempts} />
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/35">
                     <ClipboardList size={12} />
                     {questions.length} Questions · {form.skill}
@@ -476,61 +488,46 @@ function AIPractice() {
                           question={q}
                           index={i}
                           isActive={activeId === q.id}
-                          onSelect={handleSelect}
-                          attempt={attempts[q.id] || null}
+                          onSelect={handleTheorySelect}
+                          attempt={attempts[q.id] ? { correct: attempts[q.id].correct } : null}
                         />
                       ))}
                     </AnimatePresence>
                   </div>
+
+                  {/* Theory answer panel */}
+                  <AnimatePresence mode="wait">
+                    {activeQuestion && !feedback && (
+                      <AnswerPanel
+                        key={activeQuestion.id}
+                        question={activeQuestion}
+                        answer={answer}
+                        onChange={setAnswer}
+                        onSubmit={handleTheorySubmit}
+                        onClose={() => { setActiveId(null); setAnswer(''); setFeedback(null) }}
+                        submitting={submitting}
+                      />
+                    )}
+                  </AnimatePresence>
+
+                  {/* Theory feedback */}
+                  <AnimatePresence mode="wait">
+                    {feedback && activeQuestion && (
+                      <FeedbackBox key={`fb-${activeQuestion.id}`} feedback={feedback} onReset={resetFeedback} />
+                    )}
+                  </AnimatePresence>
                 </>
               )}
 
               {/* Empty state */}
-              {!generating && questions.length === 0 && !genError && (
-                <EmptyQuestions />
-              )}
+              {!generating && questions.length === 0 && !genError && <EmptyState />}
 
-              {/* ── Answer Panel ── */}
-              <AnimatePresence mode="wait">
-                {activeQuestion && !feedback && (
-                  <AnswerPanel
-                    key={activeQuestion.id}
-                    question={activeQuestion}
-                    answer={answer}
-                    onChange={setAnswer}
-                    onSubmit={handleSubmit}
-                    onClose={() => { setActiveId(null); setAnswer(''); setFeedback(null) }}
-                    submitting={submitting}
-                    existingAttempt={attempts[activeQuestion.id] || null}
-                  />
-                )}
-              </AnimatePresence>
-
-              {/* ── Feedback Box ── */}
-              <AnimatePresence mode="wait">
-                {feedback && activeQuestion && (
-                  <FeedbackBox
-                    key={`fb-${activeQuestion.id}-${feedback.attemptCount}`}
-                    feedback={feedback}
-                    question={activeQuestion}
-                    onReset={resetFeedback}
-                  />
-                )}
-              </AnimatePresence>
             </div>
           </div>
         </div>
       </Motion.main>
 
-      {/* History Drawer */}
-      <HistoryDrawer
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        history={history}
-        onRestore={restoreSession}
-      />
-
-      {/* Toast */}
+      <HistoryDrawer open={historyOpen} onClose={() => setHistoryOpen(false)} />
       <Toast toast={toast} />
     </div>
   )

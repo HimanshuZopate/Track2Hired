@@ -22,8 +22,8 @@ const safeCall = async (fn) => {
     return { data: res.data, error: null }
   } catch (err) {
     // Log to console so we can see the real error in browser devtools
-    console.error('[API Error]', err?.response?.status, err?.response?.data || err?.message)
-    return { data: null, error: err?.response?.data?.message || err?.message || 'Request failed' }
+    console.error('[API Error]', err?.response?.status, err?.serverMessage || err?.message)
+    return { data: null, error: err?.serverMessage || err?.message || 'Request failed' }
   }
 }
 

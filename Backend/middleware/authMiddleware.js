@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Recruiter = require("../models/Recruiter");
+const { sendError } = require("../utils/responseHandler");
 
 const protect = async (req, res, next) => {
   let token;
@@ -13,7 +14,7 @@ const protect = async (req, res, next) => {
   }
 
   if (!token) {
-    return res.status(401).json({ message: "No token provided" });
+    return sendError(res, "No token provided", 401);
   }
 
   try {
@@ -27,14 +28,14 @@ const protect = async (req, res, next) => {
     req.user = await model.findById(decoded.id).select("-password");
 
     if (!req.user) {
-      return res.status(401).json({ message: "User not found" });
+      return sendError(res, "User not found", 401);
     }
 
     req.userRole = req.user.role || resolvedRole || "student";
 
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Not authorized, token failed" });
+    return sendError(res, "Not authorized, token failed", 401);
   }
 };
 
@@ -45,7 +46,7 @@ const authorizeRoles = (...allowedRoles) => {
     const currentRole = req.userRole || req.user?.role || "student";
 
     if (!allowedRoles.includes(currentRole)) {
-      return res.status(403).json({ message: "Forbidden: insufficient role permissions" });
+      return sendError(res, "Forbidden: insufficient role permissions", 403);
     }
 
     return next();

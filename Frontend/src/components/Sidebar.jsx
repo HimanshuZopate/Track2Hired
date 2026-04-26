@@ -91,9 +91,13 @@ function Sidebar({ role = 'student' }) {
       {/* ── Desktop sidebar ── */}
       <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:z-30 md:flex md:w-64 md:flex-col border-r border-white/10 bg-[#0e0f14]/80 backdrop-blur-xl">
         {/* Logo */}
-        <div className="px-6 py-8 text-3xl font-bold tracking-wide text-almond">
-          TRACK<span className="text-blue-400 drop-shadow-[0_0_15px_rgba(59,130,246,.75)]">2</span>HIRED
-        </div>
+        <Link to="/dashboard" className="block px-6 py-8">
+          <div className="text-3xl font-extrabold tracking-tight">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 to-almond drop-shadow-[0_0_10px_rgba(110,231,183,0.3)]">Track</span>
+            <span className="text-blue-500 inline-block transform hover:scale-110 hover:rotate-12 transition-transform duration-300 mx-[2px] drop-shadow-[0_0_20px_rgba(59,130,246,0.8)]">2</span>
+            <span className="bg-clip-text text-transparent bg-gradient-to-l from-purple-400 to-almond drop-shadow-[0_0_10px_rgba(192,132,252,0.3)]">Hired</span>
+          </div>
+        </Link>
 
         {/* Nav links */}
         <nav className="flex-1 space-y-1.5 overflow-y-auto px-4">
@@ -166,9 +170,13 @@ function Sidebar({ role = 'student' }) {
             >
               {/* Drawer header */}
               <div className="mb-6 flex items-center justify-between">
-                <div className="text-xl font-bold text-almond">
-                  TRACK<span className="text-blue-400">2</span>HIRED
-                </div>
+                <Link to="/dashboard" onClick={() => setOpen(false)} className="block">
+                  <div className="text-2xl font-extrabold tracking-tight">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 to-almond drop-shadow-[0_0_10px_rgba(110,231,183,0.3)]">Track</span>
+                    <span className="text-blue-500 inline-block transform hover:scale-110 hover:rotate-12 transition-transform duration-300 mx-[2px] drop-shadow-[0_0_20px_rgba(59,130,246,0.8)]">2</span>
+                    <span className="bg-clip-text text-transparent bg-gradient-to-l from-purple-400 to-almond drop-shadow-[0_0_10px_rgba(192,132,252,0.3)]">Hired</span>
+                  </div>
+                </Link>
                 <button type="button" onClick={() => setOpen(false)}>
                   <X className="text-white/80" size={18} />
                 </button>

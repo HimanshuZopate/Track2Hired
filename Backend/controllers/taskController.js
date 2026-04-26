@@ -1,21 +1,22 @@
 const mongoose = require("mongoose");
 const Task = require("../models/Task");
 const { recordUserActivity } = require("../services/streakService");
-const INTERNAL_SERVER_ERROR = "Internal server error";
+const { sendSuccess, sendError } = require("../utils/responseHandler");
 
 const VALID_STATUS = ["Pending", "In Progress", "Completed"];
 const VALID_SORT_FIELDS = ["dueDate", "priority"];
 
 const handleTaskError = (res, error) => {
   if (error.name === "ValidationError") {
-    return res.status(400).json({ message: error.message });
+    return sendError(res, error.message, 400);
   }
 
   if (error.name === "CastError") {
-    return res.status(400).json({ message: "Invalid request data" });
+    return sendError(res, "Invalid request data", 400);
   }
 
-  return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+  console.error("Task API Error:", error);
+  return sendError(res, "Internal server error", 500);
 };
 
 const parsePagination = (page, limit) => {
@@ -46,7 +47,12 @@ exports.createTask = async (req, res) => {
     const { title, description, status, priority, dueDate } = req.body;
 
     if (!title) {
-      return res.status(400).json({ message: "Title is required" });
+      return sendError(res, "Title is required", 400);
+    }
+
+    const duplicateTask = await Task.findOne({ userId: req.user._id, title, status: { $ne: "Completed" } });
+    if (duplicateTask) {
+      return sendError(res, "An active task with this title already exists", 409);
     }
 
     const task = await Task.create({
@@ -58,7 +64,7 @@ exports.createTask = async (req, res) => {
       dueDate
     });
 
-    return res.status(201).json({ task });
+    return sendSuccess(res, { task }, "Task created successfully", 201);
   } catch (error) {
     return handleTaskError(res, error);
   }
@@ -70,11 +76,11 @@ exports.getUserTasks = async (req, res) => {
     const { status, page, limit, sortBy = "dueDate", sortOrder = "asc" } = req.query;
 
     if (status && !VALID_STATUS.includes(status)) {
-      return res.status(400).json({ message: "Invalid status filter" });
+      return sendError(res, "Invalid status filter", 400);
     }
 
     if (!VALID_SORT_FIELDS.includes(sortBy)) {
-      return res.status(400).json({ message: "Invalid sortBy value. Use dueDate or priority" });
+      return sendError(res, "Invalid sortBy value. Use dueDate or priority", 400);
     }
 
     const normalizedSortOrder = String(sortOrder).toLowerCase() === "desc" ? -1 : 1;
@@ -127,7 +133,7 @@ exports.getUserTasks = async (req, res) => {
     const completedPercentage =
       totalTasks > 0 ? Number(((completedTasks / totalTasks) * 100).toFixed(2)) : 0;
 
-    return res.json({
+    return sendSuccess(res, {
       tasks,
       pagination: {
         page: currentPage,
@@ -141,7 +147,7 @@ exports.getUserTasks = async (req, res) => {
         completedPercentage,
         overdueTasks
       }
-    });
+    }, "Tasks retrieved successfully", 200);
   } catch (error) {
     return handleTaskError(res, error);
   }
@@ -153,7 +159,7 @@ exports.updateTask = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid task id" });
+      return sendError(res, "Invalid task id", 400);
     }
 
     const allowedUpdates = ["title", "description", "status", "priority", "dueDate"];
@@ -166,13 +172,13 @@ exports.updateTask = async (req, res) => {
     });
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ message: "No valid fields provided for update" });
+      return sendError(res, "No valid fields provided for update", 400);
     }
 
     const previousTask = await Task.findOne({ _id: id, userId: req.user._id }).select("status");
 
     if (!previousTask) {
-      return res.status(404).json({ message: "Task not found" });
+      return sendError(res, "Task not found", 404);
     }
 
     const task = await Task.findOneAndUpdate(
@@ -185,7 +191,7 @@ exports.updateTask = async (req, res) => {
       await recordUserActivity(req.user._id, "task_completed", task._id);
     }
 
-    return res.json({ task });
+    return sendSuccess(res, { task }, "Task updated successfully", 200);
   } catch (error) {
     return handleTaskError(res, error);
   }
@@ -197,16 +203,16 @@ exports.deleteTask = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid task id" });
+      return sendError(res, "Invalid task id", 400);
     }
 
     const task = await Task.findOneAndDelete({ _id: id, userId: req.user._id });
 
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return sendError(res, "Task not found", 404);
     }
 
-    return res.json({ message: "Task deleted successfully" });
+    return sendSuccess(res, null, "Task deleted successfully", 200);
   } catch (error) {
     return handleTaskError(res, error);
   }
@@ -218,13 +224,13 @@ exports.markTaskCompleted = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid task id" });
+      return sendError(res, "Invalid task id", 400);
     }
 
     const existingTask = await Task.findOne({ _id: id, userId: req.user._id }).select("status");
 
     if (!existingTask) {
-      return res.status(404).json({ message: "Task not found" });
+      return sendError(res, "Task not found", 404);
     }
 
     const task = await Task.findOneAndUpdate(
@@ -237,7 +243,7 @@ exports.markTaskCompleted = async (req, res) => {
       await recordUserActivity(req.user._id, "task_completed", task._id);
     }
 
-    return res.json({ task });
+    return sendSuccess(res, { task }, "Task marked as completed", 200);
   } catch (error) {
     return handleTaskError(res, error);
   }

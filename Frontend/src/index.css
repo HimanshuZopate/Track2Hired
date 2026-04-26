@@ -11,6 +11,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  /* Removed smooth scroll to allow instant page transitions on route change */
+}
+
 * {
   box-sizing: border-box;
 }
@@ -678,11 +682,9 @@ body {
 @keyframes streakCounterPulse {
   0%,
   100% {
-    transform: scale(1);
     text-shadow: 0 0 18px rgba(251, 191, 36, 0.18);
   }
   50% {
-    transform: scale(1.02);
     text-shadow: 0 0 30px rgba(251, 191, 36, 0.35);
   }
 }

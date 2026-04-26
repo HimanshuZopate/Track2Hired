@@ -26,7 +26,7 @@ const userActivitySchema = new mongoose.Schema(
     count: {
       type: Number,
       default: 1,
-      min: 1
+      min: 0
     },
     referenceId: {
       type: mongoose.Schema.Types.ObjectId,

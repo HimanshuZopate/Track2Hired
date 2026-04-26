@@ -12,7 +12,7 @@ const {
 } = require("../services/aiResumeService");
 const { analyzeResumeText } = require("../services/atsAnalyzerService");
 
-const INTERNAL_SERVER_ERROR = "Internal server error";
+const { sendSuccess, sendError } = require("../utils/responseHandler");
 const ATS_THRESHOLD = 70;
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(String(id || ""));
@@ -20,14 +20,14 @@ const safeString = (value = "") => String(value || "").trim();
 
 const handleError = (res, error) => {
   if (error.name === "ValidationError") {
-    return res.status(400).json({ message: error.message });
+    return sendError(res, error.message, 400);
   }
 
   if (error.name === "CastError") {
-    return res.status(400).json({ message: "Invalid request data" });
+    return sendError(res, "Invalid request data", 400);
   }
 
-  return res.status(error.statusCode || 500).json({ message: error.message || INTERNAL_SERVER_ERROR });
+  return sendError(res, error.message || "Internal server error", error.statusCode || 500);
 };
 
 const parseMaybeJson = (value, fallback) => {
@@ -341,10 +341,10 @@ const extractResumeTextFromRequest = async (req) => {
 };
 
 exports.getResumeTemplates = async (req, res) => {
-  return res.json({
+  return sendSuccess(res, {
     templates: getResumeTemplates(),
     defaultTemplateKey: DEFAULT_TEMPLATE_KEY
-  });
+  }, "Templates retrieved", 200);
 };
 
 exports.getLatestResumeWorkspace = async (req, res) => {
@@ -355,13 +355,13 @@ exports.getLatestResumeWorkspace = async (req, res) => {
       ATSReport.findOne({ userId: req.user._id }).sort({ createdAt: -1 }).lean()
     ]);
 
-    return res.json({
+    return sendSuccess(res, {
       latestProfile: profile,
       latestResume: resume,
       latestReport: report,
       templates: getResumeTemplates(),
       defaultTemplateKey: DEFAULT_TEMPLATE_KEY
-    });
+    }, "Workspace retrieved", 200);
   } catch (error) {
     return handleError(res, error);
   }
@@ -372,11 +372,10 @@ exports.saveResumeProfile = async (req, res) => {
   try {
     const profile = await saveOrUpdateProfile(req.user._id, req.body);
 
-    return res.status(req.body?.profileId ? 200 : 201).json({
-      message: req.body?.profileId ? "Resume profile updated" : "Resume profile saved",
+    return sendSuccess(res, {
       profile,
       templates: getResumeTemplates()
-    });
+    }, req.body?.profileId ? "Resume profile updated" : "Resume profile saved", req.body?.profileId ? 200 : 201);
   } catch (error) {
     return handleError(res, error);
   }
@@ -417,8 +416,7 @@ exports.generateResume = async (req, res) => {
       analysisSnapshot: analysis
     });
 
-    return res.status(201).json({
-      message: "Resume generated successfully",
+    return sendSuccess(res, {
       profile,
       resume: {
         _id: resumeDoc._id,
@@ -434,7 +432,7 @@ exports.generateResume = async (req, res) => {
       injectedKeywords: formattedResume.injectedKeywords,
       templates: getResumeTemplates(),
       shouldPromptBuilder: analysis.score < ATS_THRESHOLD
-    });
+    }, "Resume generated successfully", 201);
   } catch (error) {
     return handleError(res, error);
   }
@@ -446,19 +444,19 @@ exports.downloadResume = async (req, res) => {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid resume id" });
+      return sendError(res, "Invalid resume id", 400);
     }
 
     const resume = await ResumeDocument.findOne({ _id: id, userId: req.user._id }).select("pdfUrl templateKey");
 
     if (!resume) {
-      return res.status(404).json({ message: "Resume not found" });
+      return sendError(res, "Resume not found", 404);
     }
 
-    return res.json({
+    return sendSuccess(res, {
       pdfUrl: resume.pdfUrl,
       fileName: `${resume.templateKey || "resume"}-${id}.pdf`
-    });
+    }, "Resume downloaded", 200);
   } catch (error) {
     return handleError(res, error);
   }
@@ -470,7 +468,7 @@ exports.analyzeResumeATS = async (req, res) => {
     const jobDescription = safeString(req.body?.jobDescription);
 
     if (!jobDescription) {
-      return res.status(400).json({ message: "jobDescription is required" });
+      return sendError(res, "jobDescription is required", 400);
     }
 
     const extracted = await extractResumeTextFromRequest(req);
@@ -501,12 +499,11 @@ exports.analyzeResumeATS = async (req, res) => {
       );
     }
 
-    return res.status(201).json({
-      message: "ATS analysis completed",
+    return sendSuccess(res, {
       reportId: report._id,
       sourceType: extracted.sourceType,
       ...analysis
-    });
+    }, "ATS analysis completed", 201);
   } catch (error) {
     return handleError(res, error);
   } finally {

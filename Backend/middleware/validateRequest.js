@@ -7,12 +7,12 @@ const validateRequest = (req, res, next) => {
     return next();
   }
 
+  const errorMessages = errors.array().map((err) => err.msg).join(", ");
+  
   return res.status(400).json({
-    message: "Validation failed",
-    errors: errors.array().map((error) => ({
-      field: error.path,
-      message: error.msg
-    }))
+    success: false,
+    data: null,
+    message: `Validation failed: ${errorMessages}`
   });
 };
 

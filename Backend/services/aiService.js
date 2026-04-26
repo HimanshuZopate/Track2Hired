@@ -22,12 +22,13 @@ const escapeRegex = (v) => String(v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // ─── Startup diagnostics (runs once on require) ──────────────────────────────
 (() => {
   const keys = {
-    GROK_API_KEY:   process.env.GROK_API_KEY   ? "✓ Loaded" : "✗ Missing",
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "✓ Loaded" : "✗ Missing",
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY ? "✓ Loaded" : "✗ Missing",
-    AI_PROVIDER:    process.env.AI_PROVIDER    || "(default: cascade)",
+    GROQ_API_KEY:   process.env.GROQ_API_KEY   ? '✓ Loaded' : '✗ Missing',
+    GROK_API_KEY:   process.env.GROK_API_KEY   ? '✓ Loaded' : '✗ Missing',
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '✓ Loaded' : '✗ Missing',
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY ? '✓ Loaded' : '✗ Missing',
+    AI_PROVIDER:    process.env.AI_PROVIDER    || '(default: cascade)',
   };
-  console.log("[AI] Provider keys at startup:", keys);
+  console.log('[AI] Provider keys at startup:', keys);
 })();
 
 // ─── Retry helpers ────────────────────────────────────────────────────────────
@@ -348,7 +349,32 @@ const buildFallbackQuestions = ({ skill, difficulty, type, count }) => {
 // PROVIDER CALLERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── 1. Grok (xAI) ───────────────────────────────────────────────────────────
+// ─── 1. Groq (api.groq.com — OpenAI-compatible, key starts with gsk_) ──────────
+const callGroq = async (prompt) => {
+  const apiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY;
+  if (!apiKey || !apiKey.startsWith('gsk_')) throw Object.assign(new Error('GROQ_API_KEY not configured or not a gsk_ key'), { _noKey: true });
+
+  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const response = await axios.post(
+    'https://api.groq.com/openai/v1/chat/completions',
+    {
+      model,
+      messages: [
+        { role: 'system', content: 'You are an expert interview question generator. Return strict JSON only.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: Number(process.env.GROQ_TEMPERATURE || 0.6),
+      max_tokens: Number(process.env.GROQ_MAX_TOKENS || 1400),
+    },
+    {
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      timeout: 25000,
+    }
+  );
+  return response?.data?.choices?.[0]?.message?.content || '';
+};
+
+// ─── 2. Grok (xAI) ───────────────────────────────────────────────────────────
 const callGrok = async (prompt) => {
   const apiKey = process.env.GROK_API_KEY;
   if (!apiKey) throw Object.assign(new Error("GROK_API_KEY not configured"), { _noKey: true });
@@ -448,9 +474,10 @@ const callWithRetry = async (callerFn, prompt) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PROVIDER_CHAIN = [
-  { name: "grok",   caller: callGrok   },
-  { name: "openai", caller: callOpenAI },
-  { name: "gemini", caller: callGemini },
+  { name: 'groq',   caller: callGroq   },
+  { name: 'grok',   caller: callGrok   },
+  { name: 'openai', caller: callOpenAI },
+  { name: 'gemini', caller: callGemini },
 ];
 
 const tryProviderChain = async (prompt, { skill, type }) => {
@@ -614,8 +641,148 @@ const generateQuestions = async ({ userId, skill, difficulty, type, count = 5 })
   });
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRICT MCQ GENERATION (isolated — does not touch existing generateQuestions)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Difficulty alias map (Easy/Medium/Hard ↔ Beginner/Intermediate/Advanced)
+const DIFFICULTY_FORWARD = {
+  Easy: "Beginner", Medium: "Intermediate", Hard: "Advanced",
+  Beginner: "Beginner", Intermediate: "Intermediate", Advanced: "Advanced",
+};
+
+const buildMcqPrompt = ({ skill, difficulty, count }) =>
+  `Generate exactly ${count} multiple choice questions for the topic "${skill}" at ${difficulty} level.
+Each question MUST have exactly 4 options and one correct answer that matches one of the options exactly.
+Return a JSON object:
+{"questions":[{"question":"...","options":["A","B","C","D"],"correctAnswer":"A","explanation":"..."}]}`;
+
+// Curated MCQ fallback — real questions per topic
+const MCQ_FALLBACK_BANK = {
+  react: [
+    { question: "What hook is used to manage state in a functional React component?", options: ["useEffect", "useState", "useReducer", "useRef"], correctAnswer: "useState", explanation: "useState returns a state variable and a setter function for managing local component state." },
+    { question: "Which lifecycle method is equivalent to componentDidMount in hooks?", options: ["useEffect with no deps", "useEffect with empty array", "useMemo", "useCallback"], correctAnswer: "useEffect with empty array", explanation: "useEffect with an empty dependency array runs once after the first render, mimicking componentDidMount." },
+    { question: "What does the Virtual DOM do in React?", options: ["Directly updates the browser DOM", "Stores component styles", "Acts as an in-memory representation to batch DOM updates", "Handles routing"], correctAnswer: "Acts as an in-memory representation to batch DOM updates", explanation: "React's Virtual DOM diffs changes and applies only the minimal necessary updates to the real DOM." },
+    { question: "Which prop is used to pass children to a React component?", options: ["content", "children", "slots", "nodes"], correctAnswer: "children", explanation: "The special 'children' prop holds the content between opening and closing JSX tags." },
+    { question: "What is the purpose of React.memo?", options: ["To create memoized selectors", "To prevent re-renders of components when props haven't changed", "To cache API responses", "To optimize CSS"], correctAnswer: "To prevent re-renders of components when props haven't changed", explanation: "React.memo is a higher-order component that shallow-compares props to skip unnecessary re-renders." },
+  ],
+  javascript: [
+    { question: "What is the output of typeof null in JavaScript?", options: ["null", "undefined", "object", "string"], correctAnswer: "object", explanation: "typeof null returns 'object' — a long-standing quirk of JavaScript's type system." },
+    { question: "Which method converts a JSON string to a JavaScript object?", options: ["JSON.stringify", "JSON.parse", "JSON.convert", "Object.fromJSON"], correctAnswer: "JSON.parse", explanation: "JSON.parse() parses a JSON string and returns the corresponding JavaScript object." },
+    { question: "What does the 'use strict' directive do?", options: ["Enables TypeScript", "Forces synchronous execution", "Enables strict mode to catch common coding mistakes", "Minifies code"], correctAnswer: "Enables strict mode to catch common coding mistakes", explanation: "Strict mode prevents silent errors, disables deprecated features, and catches undeclared variables." },
+    { question: "Which of the following is NOT a JavaScript primitive?", options: ["string", "boolean", "array", "number"], correctAnswer: "array", explanation: "Arrays are objects in JavaScript. The primitives are: string, number, bigint, boolean, undefined, symbol, null." },
+    { question: "What does the spread operator (...) do?", options: ["Merges functions", "Deletes object keys", "Expands an iterable into individual elements", "Creates a deep clone"], correctAnswer: "Expands an iterable into individual elements", explanation: "The spread operator expands arrays/objects, useful for copying, merging, and passing arguments." },
+  ],
+  nodejs: [
+    { question: "Which module system does Node.js use natively?", options: ["ES Modules only", "CommonJS (require/module.exports)", "AMD", "UMD"], correctAnswer: "CommonJS (require/module.exports)", explanation: "Node.js uses CommonJS by default; ES Modules are supported with .mjs extension or 'type':'module'." },
+    { question: "What is the Event Loop in Node.js?", options: ["A DOM rendering cycle", "A mechanism that offloads async operations and processes callbacks", "A built-in HTTP server", "A REPL feature"], correctAnswer: "A mechanism that offloads async operations and processes callbacks", explanation: "The Event Loop allows Node.js to be non-blocking by delegating I/O to the OS and handling callbacks." },
+    { question: "Which built-in module is used for file system operations?", options: ["path", "fs", "os", "stream"], correctAnswer: "fs", explanation: "The 'fs' module provides an API for interacting with the file system (read, write, delete, etc.)." },
+    { question: "What does process.env hold?", options: ["Runtime errors", "Application environment variables", "Installed packages", "Memory usage"], correctAnswer: "Application environment variables", explanation: "process.env is an object containing the user environment variables passed at runtime." },
+    { question: "Which flag runs a Node.js script with the inspector?", options: ["--debug", "--trace", "--inspect", "--watch"], correctAnswer: "--inspect", explanation: "node --inspect enables the V8 Inspector Protocol, allowing debugging via Chrome DevTools." },
+  ],
+  mongodb: [
+    { question: "Which MongoDB method inserts a single document?", options: ["insertMany", "insertOne", "addOne", "create"], correctAnswer: "insertOne", explanation: "insertOne() inserts a single document and returns an InsertOneResult with the generated _id." },
+    { question: "What is an index in MongoDB?", options: ["A type of document", "A data structure that improves query performance", "A collection backup", "A schema validator"], correctAnswer: "A data structure that improves query performance", explanation: "Indexes allow MongoDB to quickly locate documents without scanning the entire collection." },
+    { question: "Which aggregation stage filters documents?", options: ["$group", "$project", "$match", "$sort"], correctAnswer: "$match", explanation: "$match filters the document stream and is similar to a WHERE clause in SQL." },
+    { question: "What does mongoose provide over the native MongoDB driver?", options: ["Faster queries", "Schema validation and ODM features", "Authentication", "Caching"], correctAnswer: "Schema validation and ODM features", explanation: "Mongoose adds schema definitions, validation, middleware hooks, and model methods as an ODM layer." },
+    { question: "Which MongoDB operator checks if a field exists?", options: ["$has", "$exists", "$contains", "$defined"], correctAnswer: "$exists", explanation: "$exists matches documents that have (or don't have) a specified field: { field: { $exists: true } }." },
+  ],
+  default: [
+    { question: "What does REST stand for?", options: ["Remote Execution State Transfer", "Representational State Transfer", "Resource Entity State Transfer", "Remote State Transfer"], correctAnswer: "Representational State Transfer", explanation: "REST is an architectural style for distributed hypermedia systems, defining stateless client-server communication." },
+    { question: "Which HTTP status code indicates a successful resource creation?", options: ["200", "201", "204", "301"], correctAnswer: "201", explanation: "HTTP 201 Created is returned when a resource is successfully created via POST." },
+    { question: "What is the purpose of a foreign key in a relational database?", options: ["Indexes a table", "Links rows in one table to rows in another", "Enforces unique values", "Encrypts data"], correctAnswer: "Links rows in one table to rows in another", explanation: "A foreign key creates a referential integrity constraint, ensuring valid relationships between tables." },
+    { question: "What does Git rebase do?", options: ["Merges two branches with a merge commit", "Replays commits from one branch onto another", "Resets the HEAD", "Deletes a branch"], correctAnswer: "Replays commits from one branch onto another", explanation: "Rebase moves or replays commits, creating a linear history — common before merging to keep history clean." },
+    { question: "Which data structure uses LIFO (Last In, First Out)?", options: ["Queue", "Stack", "Heap", "Graph"], correctAnswer: "Stack", explanation: "A Stack operates LIFO — the last element pushed is the first one popped." },
+  ],
+};
+
+const getMcqFallback = ({ skill, count }) => {
+  const key = normalizeSkillText(skill);
+  const bankKey = Object.keys(MCQ_FALLBACK_BANK).find((k) => key.includes(k)) || "default";
+  const pool = MCQ_FALLBACK_BANK[bankKey];
+  const size = Math.max(3, Math.min(10, Number(count) || 5));
+  const shuffled = shuffleQuestions(pool);
+  return Array.from({ length: size }, (_, i) => ({
+    id: `fallback-mcq-${i + 1}`,
+    question: shuffled[i % shuffled.length].question,
+    type: "MCQ",
+    options: shuffleQuestions([...shuffled[i % shuffled.length].options]),
+    correctAnswer: shuffled[i % shuffled.length].correctAnswer,
+    explanation: shuffled[i % shuffled.length].explanation,
+  }));
+};
+
+/**
+ * generateMcqQuestions — strict MCQ generation via Groq (json_object mode).
+ * Falls back to curated MCQ bank if all providers fail.
+ * Returns: { questions: [{id, question, type, options, correctAnswer, explanation}], usedFallback, provider }
+ */
+const generateMcqQuestions = async ({ userId, skill, difficulty, count = 5 }) => {
+  const finalCount = Math.max(3, Math.min(10, Number(count) || 5));
+  const normalDiff = DIFFICULTY_FORWARD[difficulty] || difficulty;
+  const prompt = buildMcqPrompt({ skill, difficulty: normalDiff, count: finalCount });
+
+  // Try each provider
+  for (const provider of PROVIDER_CHAIN) {
+    try {
+      console.log(`[AI-MCQ] Trying provider: ${provider.name}`);
+      const raw = await provider.caller(prompt);
+      const text = String(raw || "").trim();
+
+      // Parse {questions: [...]} or [...] response
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch { /* try strip */ }
+      if (!parsed) {
+        const stripped = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+        try { parsed = JSON.parse(stripped); } catch { /* fall through */ }
+      }
+
+      const raw_questions = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.questions)
+        ? parsed.questions
+        : Object.values(parsed || {}).find(Array.isArray) || [];
+
+      // Validate each has 4 options and a correctAnswer
+      const valid = raw_questions.filter((q) =>
+        q.question &&
+        Array.isArray(q.options) && q.options.length === 4 &&
+        q.correctAnswer &&
+        q.options.some((o) => String(o).trim() === String(q.correctAnswer).trim())
+      );
+
+      if (valid.length >= 2) {
+        const questions = valid.slice(0, finalCount).map((q, i) => ({
+          id: `mcq-${i + 1}`,
+          question: String(q.question),
+          type: "MCQ",
+          options: q.options.map(String),
+          correctAnswer: String(q.correctAnswer),
+          explanation: String(q.explanation || ""),
+        }));
+        console.log(`[AI-MCQ] ✓ ${provider.name} returned ${questions.length} MCQ questions for "${skill}"`);
+        return { questions, usedFallback: false, provider: provider.name };
+      }
+    } catch (err) {
+      console.warn(`[AI-MCQ] ${provider.name} failed: ${err.message}`);
+    }
+  }
+
+  // All providers failed — use curated bank
+  console.warn(`[AI-MCQ] All providers failed for "${skill}" — using curated fallback`);
+  return {
+    questions: getMcqFallback({ skill, count: finalCount }),
+    usedFallback: true,
+    provider: "fallback",
+  };
+};
+
+// Expose difficulty map for reuse in controller
+
 module.exports = {
   generateQuestions,
+  generateMcqQuestions,
   ALLOWED_DIFFICULTIES,
   ALLOWED_TYPES,
+  DIFFICULTY_FORWARD,
 };

@@ -273,7 +273,6 @@ const recordUserActivity = async (userId, activityType, referenceId = null, opti
         userId,
         activityType: canonicalType,
         date,
-        count: 0,
         activityDate,
         referenceId: parsedReferenceId
       },

@@ -9,14 +9,12 @@ const {
   shortlistCandidate
 } = require("../services/recruiterService");
 
-const INTERNAL_SERVER_ERROR = "Internal server error";
+const { sendSuccess, sendError } = require("../utils/responseHandler");
 
 const recruiterFeatureGuard = (res) => {
   const isEnabled = String(process.env.ENABLE_RECRUITER_MODULE || "false").toLowerCase() === "true";
   if (!isEnabled) {
-    res.status(503).json({
-      message: "Recruiter module is disabled. This is a future wireframe endpoint."
-    });
+    sendError(res, "Recruiter module is disabled. This is a future wireframe endpoint.", 503);
     return false;
   }
   return true;
@@ -42,12 +40,12 @@ exports.registerRecruiter = async (req, res) => {
     const { companyName, recruiterName, email, password, companyWebsite, companySize } = req.body;
 
     if (!companyName || !recruiterName || !email || !password) {
-      return res.status(400).json({ message: "companyName, recruiterName, email, password are required" });
+      return sendError(res, "companyName, recruiterName, email, password are required", 400);
     }
 
     const existing = await Recruiter.findOne({ email: String(email).toLowerCase() });
     if (existing) {
-      return res.status(409).json({ message: "Recruiter already exists" });
+      return sendError(res, "Recruiter already exists", 409);
     }
 
     const recruiter = await Recruiter.create({
@@ -59,15 +57,15 @@ exports.registerRecruiter = async (req, res) => {
       companySize
     });
 
-    return res.status(201).json({
+    return sendSuccess(res, {
       _id: recruiter._id,
       companyName: recruiter.companyName,
       recruiterName: recruiter.recruiterName,
       email: recruiter.email,
       token: createRecruiterToken(recruiter)
-    });
+    }, "Registration successful", 201);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -78,28 +76,28 @@ exports.loginRecruiter = async (req, res) => {
 
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ message: "email and password are required" });
+      return sendError(res, "email and password are required", 400);
     }
 
     const recruiter = await Recruiter.findOne({ email: String(email).toLowerCase() });
     if (!recruiter) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return sendError(res, "Invalid credentials", 401);
     }
 
     const isMatch = await bcrypt.compare(password, recruiter.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return sendError(res, "Invalid credentials", 401);
     }
 
-    return res.json({
+    return sendSuccess(res, {
       _id: recruiter._id,
       companyName: recruiter.companyName,
       recruiterName: recruiter.recruiterName,
       email: recruiter.email,
       token: createRecruiterToken(recruiter)
-    });
+    }, "Login successful", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -121,7 +119,7 @@ exports.createJobPosting = async (req, res) => {
     } = req.body;
 
     if (!recruiterId || !jobTitle || !jobDescription) {
-      return res.status(400).json({ message: "recruiterId, jobTitle and jobDescription are required" });
+      return sendError(res, "recruiterId, jobTitle and jobDescription are required", 400);
     }
 
     const job = await JobPosting.create({
@@ -136,9 +134,9 @@ exports.createJobPosting = async (req, res) => {
       location
     });
 
-    return res.status(201).json({ job });
+    return sendSuccess(res, { job }, "Job created successfully", 201);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -156,9 +154,9 @@ exports.getCandidates = async (req, res) => {
     };
 
     const candidates = await filterCandidates(criteria);
-    return res.json({ candidates });
+    return sendSuccess(res, { candidates }, "Candidates retrieved", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -168,9 +166,9 @@ exports.generateSnapshot = async (req, res) => {
     if (!recruiterFeatureGuard(res)) return;
 
     const snapshot = await generateCandidateSnapshot(req.params.userId);
-    return res.status(201).json({ snapshot });
+    return sendSuccess(res, { snapshot }, "Snapshot generated", 201);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -180,9 +178,9 @@ exports.getCandidateMatches = async (req, res) => {
     if (!recruiterFeatureGuard(res)) return;
 
     const matches = await calculateCandidateMatch(req.params.jobId);
-    return res.json({ matches });
+    return sendSuccess(res, { matches }, "Matches retrieved", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -193,12 +191,12 @@ exports.shortlist = async (req, res) => {
 
     const { recruiterId, jobId, candidateId, status, notes } = req.body;
     if (!recruiterId || !jobId || !candidateId) {
-      return res.status(400).json({ message: "recruiterId, jobId and candidateId are required" });
+      return sendError(res, "recruiterId, jobId and candidateId are required", 400);
     }
 
     const entry = await shortlistCandidate({ recruiterId, jobId, candidateId, status, notes });
-    return res.status(201).json({ shortlist: entry });
+    return sendSuccess(res, { shortlist: entry }, "Shortlisted successfully", 201);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
   }
 };

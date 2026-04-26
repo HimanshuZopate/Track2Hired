@@ -31,6 +31,7 @@ function ConsistencyGraph({ data = [], loading = false }) {
             }}
           />
           <Line
+            name="Activity Score"
             type="monotone"
             dataKey="score"
             stroke="url(#consistencyStroke)"

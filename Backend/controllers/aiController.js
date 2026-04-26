@@ -1,194 +1,342 @@
-const mongoose = require("mongoose");
-const GeneratedQuestion = require("../models/GeneratedQuestion");
-const QuestionAttempt = require("../models/QuestionAttempt");
-const { generateQuestions, ALLOWED_DIFFICULTIES, ALLOWED_TYPES } = require("../services/aiService");
-const { updateSkillConfidence } = require("../services/skillProgressionService");
-const { calculateAndUpsertReadiness } = require("../services/readinessService");
-const { recordUserActivity } = require("../services/streakService");
-const INTERNAL_SERVER_ERROR = "Internal server error";
+"use strict";
 
+/**
+ * aiController.js — Isolated AI question module
+ *
+ * POST /api/ai/generate  → MCQ (strict) or Theory generation; no DB storage
+ * POST /api/ai/answer    → MCQ exact match | Theory keyword match; auto-upsert skill
+ * POST /api/ai/attempt   → backward-compat self-report
+ * GET  /api/ai/history   → stub
+ */
+
+const crypto = require("crypto");
+const { generateQuestions, generateMcqQuestions, DIFFICULTY_FORWARD } = require("../services/aiService");
+const { updateSkillConfidence } = require("../services/skillProgressionService");
+const { recordUserActivity } = require("../services/streakService");
+const { sendSuccess, sendError } = require("../utils/responseHandler");
+
+// ─── Session cache ─────────────────────────────────────────────────────────────
+// Stores full question objects (with correctAnswer/answer/keywords) — NEVER sent to client
+const _sessionCache = new Map();
+const SESSION_TTL_MS = 30 * 60 * 1000;
+
+function makeSessionId() {
+  return typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : crypto.randomBytes(16).toString("hex");
+}
+
+// ─── MCQ exact-match evaluator ────────────────────────────────────────────────
+function evaluateMcq(userAnswer, cachedQuestion) {
+  const correct = String(userAnswer || "").trim() ===
+    String(cachedQuestion?.correctAnswer || cachedQuestion?.answer || "").trim();
+  return { correct, matchScore: correct ? 100 : 0 };
+}
+
+// ─── Theory keyword evaluator ─────────────────────────────────────────────────
+function normaliseText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function evaluateTheory(userAnswer, question) {
+  const userText = normaliseText(userAnswer);
+
+  if (!question) {
+    return { correct: userText.length >= 40, matchScore: userText.length >= 40 ? 65 : 20 };
+  }
+
+  const explicitKeywords = Array.isArray(question.keywords) ? question.keywords.map(normaliseText) : [];
+  const answerWords = normaliseText(question.answer || "")
+    .split(/\s+/)
+    .filter((w) => w.length >= 5);
+
+  const allKeywords = [...new Set([...explicitKeywords, ...answerWords])].filter(Boolean);
+
+  if (!allKeywords.length) {
+    return { correct: userText.length >= 40, matchScore: userText.length >= 40 ? 65 : 20 };
+  }
+
+  const matched = allKeywords.filter((k) => userText.includes(k));
+  const matchScore = Math.round((matched.length / allKeywords.length) * 100);
+
+  return { correct: matchScore >= 40, matchScore };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/ai/generate
+// Body: { skill|topic, difficulty, type: "MCQ"|"Theory"|"Mixed", count? }
+// ─────────────────────────────────────────────────────────────────────────────
 exports.generateAiQuestions = async (req, res) => {
   try {
-    const { skill, difficulty, type, count } = req.body;
+    const { skill, topic, difficulty, type, count } = req.body;
 
-    if (!skill || !difficulty || !type) {
-      return res.status(400).json({ message: "skill, difficulty and type are required" });
+    const resolvedTopic = String(skill || topic || "").trim();
+    const resolvedDifficulty = String(difficulty || "Intermediate").trim();
+    const resolvedType = String(type || "Theory").trim();
+    const finalCount = Math.max(3, Math.min(10, Number(count) || 5));
+
+    if (!resolvedTopic) {
+      return sendError(res, "topic / skill is required", 400);
     }
 
-    if (!ALLOWED_DIFFICULTIES.includes(difficulty)) {
-      return res.status(400).json({
-        message: `Invalid difficulty. Allowed: ${ALLOWED_DIFFICULTIES.join(", ")}`
+    const aiDifficulty = DIFFICULTY_FORWARD[resolvedDifficulty] || "Intermediate";
+
+    let result;
+
+    // ── Route based on type ───────────────────────────────────────────────
+    if (resolvedType === "MCQ") {
+      // Strict MCQ path — dedicated generator
+      result = await generateMcqQuestions({
+        userId: req.user?._id,
+        skill: resolvedTopic,
+        difficulty: aiDifficulty,
+        count: finalCount,
+      });
+    } else {
+      // Theory / Mixed / Coding path
+      result = await generateQuestions({
+        userId: req.user?._id,
+        skill: resolvedTopic,
+        difficulty: aiDifficulty,
+        type: resolvedType === "Theory" ? "Theory" : resolvedType,
+        count: finalCount,
       });
     }
 
-    if (!ALLOWED_TYPES.includes(type)) {
-      return res.status(400).json({
-        message: `Invalid type. Allowed: ${ALLOWED_TYPES.join(", ")}`
-      });
-    }
+    // ── Cache full questions (with correctAnswer/answer) server-side ──────
+    const sessionId = makeSessionId();
+    _sessionCache.set(sessionId, {
+      questions: result.questions,
+      topic: resolvedTopic,
+      difficulty: resolvedDifficulty,
+      type: resolvedType,
+      expiresAt: Date.now() + SESSION_TTL_MS,
+    });
+    setTimeout(() => _sessionCache.delete(sessionId), SESSION_TTL_MS);
 
-    const requestedCount = Number(count || 5);
-    const finalCount = Number.isFinite(requestedCount)
-      ? Math.max(1, Math.min(10, requestedCount))
-      : 5;
-
-    const result = await generateQuestions({
-      userId: req.user?._id,
-      skill,
-      difficulty,
-      type,
-      count: finalCount
+    // ── Build safe questions for client ───────────────────────────────────
+    // For MCQ: keep options visible, strip correctAnswer
+    // For Theory: strip answer + keywords
+    const safeQuestions = result.questions.map((q) => {
+      if (q.type === "MCQ" || resolvedType === "MCQ") {
+        // eslint-disable-next-line no-unused-vars
+        const { correctAnswer, answer, keywords, ...rest } = q;
+        return rest; // options remain visible
+      }
+      // eslint-disable-next-line no-unused-vars
+      const { answer, keywords, ...rest } = q;
+      return rest;
     });
 
-    const generated = await GeneratedQuestion.create({
-      userId: req.user._id,
-      skill,
-      difficulty,
-      type,
-      questions: result.questions
-    });
-
-    if (result.usedFallback) {
-      return res.status(200).json({
-        success: false,
-        error: "AI generation failed",
-        message: "AI service temporarily busy. Showing curated backup questions.",
-        fallbackUsed: true,
-        provider: result.provider,
-        usedFallback: true,
-        providerError: result.error || null,
-        generatedId: generated._id,
-        questions: result.questions
-      });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: "Questions generated successfully",
-      fallbackUsed: false,
-      provider: result.provider,
-      usedFallback: false,
-      providerError: null,
-      generatedId: generated._id,
-      questions: result.questions
-    });
+    return sendSuccess(res, {
+      sessionId,
+      generatedId: sessionId, // backward compat
+      questions: safeQuestions,
+      source: result.usedFallback ? "fallback" : "ai",
+      usedFallback: !!result.usedFallback,
+      providerError: result.usedFallback ? (result.error || null) : null,
+    }, "Questions generated successfully", 200);
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("[AI_CONTROLLER] generateAiQuestions failed:", error?.message || error);
-
-    if (error?.message === "AI API FAILED") {
-      return res.status(502).json({
-        success: false,
-        error: "AI generation failed",
-        fallbackUsed: false
-      });
-    }
-
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    console.error("[AI] generateAiQuestions failed:", error.message);
+    return sendError(res, "Failed to generate questions", 500);
   }
 };
 
-// POST /api/ai/attempt
-exports.recordQuestionAttempt = async (req, res) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/ai/answer  — backend evaluates
+// Body: { sessionId, questionId, userAnswer, topic, difficulty }
+// ─────────────────────────────────────────────────────────────────────────────
+exports.answerQuestion = async (req, res) => {
   try {
-    const { questionId, userAnswer, isCorrect, generatedId, skillName, difficulty } = req.body;
+    const { sessionId, questionId, userAnswer, topic, difficulty } = req.body;
 
-    if (!questionId || userAnswer === undefined || typeof isCorrect !== "boolean") {
-      return res.status(400).json({
-        message: "questionId, userAnswer and isCorrect(boolean) are required"
-      });
+    const trimmedAnswer = String(userAnswer || "").trim();
+    if (trimmedAnswer.length < 1) {
+      return sendError(res, "userAnswer is required", 400);
     }
 
-    let generatedSession = null;
-    if (generatedId && mongoose.Types.ObjectId.isValid(String(generatedId))) {
-      generatedSession = await GeneratedQuestion.findOne({
-        _id: generatedId,
-        userId: req.user._id
-      }).lean();
-    }
+    // ── Lookup cached question ────────────────────────────────────────────
+    let cachedQuestion = null;
+    let cachedTopic = topic;
+    let cachedDifficulty = difficulty;
+    let questionType = "Theory";
 
-    const resolvedSkillName = String(skillName || generatedSession?.skill || "").trim();
-    const resolvedDifficulty = String(difficulty || generatedSession?.difficulty || "Intermediate").trim();
-
-    const existingAttempt = await QuestionAttempt.findOne({
-      userId: req.user._id,
-      questionId: String(questionId)
-    });
-
-    const attempt = await QuestionAttempt.findOneAndUpdate(
-      { userId: req.user._id, questionId: String(questionId) },
-      {
-        $set: {
-          userAnswer: String(userAnswer),
-          isCorrect,
-          skillName: resolvedSkillName || null,
-          difficulty: resolvedDifficulty || null
-        },
-        $inc: { attemptCount: 1 }
-      },
-      {
-        upsert: true,
-        setDefaultsOnInsert: true,
-        returnDocument: "after"
+    if (sessionId && _sessionCache.has(sessionId)) {
+      const session = _sessionCache.get(sessionId);
+      if (session.expiresAt > Date.now()) {
+        cachedQuestion = (session.questions || []).find(
+          (q) => String(q.id) === String(questionId)
+        ) || null;
+        cachedTopic = cachedTopic || session.topic;
+        cachedDifficulty = cachedDifficulty || session.difficulty;
+        questionType = session.type || cachedQuestion?.type || "Theory";
       }
-    );
+    }
 
+    // ── Evaluate: MCQ = exact match, Theory = keyword match ──────────────
+    const isMcq = questionType === "MCQ" || cachedQuestion?.type === "MCQ";
+    const evaluation = isMcq
+      ? evaluateMcq(trimmedAnswer, cachedQuestion)
+      : evaluateTheory(trimmedAnswer, cachedQuestion);
+
+    // ── Auto-upsert skill if correct ─────────────────────────────────────
     let skillProgress = {
-      improved: false,
-      created: false,
-      delta: 0,
-      oldConfidence: null,
-      newConfidence: null,
-      skillName: resolvedSkillName || null
+      improved: false, created: false, delta: 0,
+      oldConfidence: null, newConfidence: null,
+      skillName: cachedTopic || "General",
     };
 
-    let readiness;
-
-    if (isCorrect && !existingAttempt?.isCorrect && resolvedSkillName) {
-      const progression = await updateSkillConfidence(
-        req.user._id,
-        resolvedSkillName,
-        resolvedDifficulty,
-        { category: "Technical" }
-      );
-
-      skillProgress = {
-        improved: progression.improved,
-        created: progression.created,
-        delta: progression.delta,
-        oldConfidence: progression.oldConfidence,
-        newConfidence: progression.newConfidence,
-        skillName: resolvedSkillName
-      };
-
-      readiness = progression.readiness;
-    } else {
-      readiness = await calculateAndUpsertReadiness(req.user._id);
+    if (evaluation.correct && cachedTopic) {
+      try {
+        const progression = await updateSkillConfidence(
+          req.user._id,
+          cachedTopic,
+          cachedDifficulty || "Medium",
+          { category: "Technical" }
+        );
+        skillProgress = {
+          improved: progression.improved,
+          created: progression.created,
+          delta: progression.delta,
+          oldConfidence: progression.oldConfidence,
+          newConfidence: progression.newConfidence,
+          skillName: cachedTopic,
+        };
+      } catch (skillErr) {
+        console.warn("[AI] Skill update failed (non-fatal):", skillErr.message);
+      }
     }
 
-    await recordUserActivity(req.user._id, "question_answered", attempt._id);
+    try { await recordUserActivity(req.user._id, "question_answered", null); } catch { /* non-fatal */ }
 
-    return res.status(201).json({
-      message: "Attempt recorded",
-      attempt,
+    return sendSuccess(res, {
+      correct: evaluation.correct,
+      matchScore: evaluation.matchScore || 0,
+      isMcq,
+      // Reveal answers after submission
+      correctAnswer: cachedQuestion?.correctAnswer || cachedQuestion?.answer || null,
+      explanation: cachedQuestion?.explanation || null,
       skillProgress,
-      readiness
-    });
+    }, "Answer evaluated successfully", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    console.error("[AI] answerQuestion failed:", error.message);
+    return sendError(res, "Failed to evaluate answer", 500);
   }
 };
 
-// GET /api/ai/history
-exports.getGeneratedHistory = async (req, res) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/ai/attempt  — backward-compat self-report
+// ─────────────────────────────────────────────────────────────────────────────
+exports.recordQuestionAttempt = async (req, res) => {
   try {
-    const history = await GeneratedQuestion.find({ userId: req.user._id })
-      .sort({ createdAt: -1 })
-      .limit(20);
+    const { questionId, userAnswer, isCorrect, skillName, difficulty } = req.body;
 
-    return res.json({ history });
+    if (!questionId || userAnswer === undefined || typeof isCorrect !== "boolean") {
+      return sendError(res, "questionId, userAnswer and isCorrect (boolean) are required", 400);
+    }
+
+    let skillProgress = { improved: false, created: false, delta: 0 };
+
+    if (isCorrect && skillName) {
+      try {
+        const progression = await updateSkillConfidence(
+          req.user._id, skillName, difficulty || "Medium", { category: "Technical" }
+        );
+        skillProgress = {
+          improved: progression.improved, created: progression.created,
+          delta: progression.delta, oldConfidence: progression.oldConfidence,
+          newConfidence: progression.newConfidence, skillName,
+        };
+      } catch { /* non-fatal */ }
+    }
+
+    try { await recordUserActivity(req.user._id, "question_answered", null); } catch { /* non-fatal */ }
+
+    return sendSuccess(res, {
+      attempt: { questionId, userAnswer, isCorrect, attemptCount: 1 },
+      skillProgress,
+    }, "Attempt recorded", 200);
   } catch (error) {
-    return res.status(500).json({ message: INTERNAL_SERVER_ERROR });
+    return sendError(res, "Internal server error", 500);
+  }
+};
+
+// GET /api/ai/history — stub
+exports.getGeneratedHistory = async (_req, res) => sendSuccess(res, { history: [] }, "History retrieved", 200);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/ai/evaluate-all  — batch MCQ evaluation
+// Body: { sessionId, answers: { "q1": "selected option text", ... } }
+// ─────────────────────────────────────────────────────────────────────────────
+exports.evaluateAllAnswers = async (req, res) => {
+  try {
+    const { sessionId, answers } = req.body;
+
+    if (!sessionId || !answers || typeof answers !== "object") {
+      return sendError(res, "sessionId and answers object are required", 400);
+    }
+
+    const session = _sessionCache.get(sessionId);
+    if (!session || session.expiresAt <= Date.now()) {
+      return sendError(res, "Session expired or not found. Please generate questions again.", 404);
+    }
+
+    // Evaluate each submitted answer
+    const results = {};
+    let correctCount = 0;
+
+    for (const q of session.questions) {
+      const userAnswer = answers[q.id];
+      if (!userAnswer) continue; // not answered
+
+      const correct = String(userAnswer).trim() === String(q.correctAnswer || q.answer || "").trim();
+      if (correct) correctCount++;
+
+      results[q.id] = {
+        correct,
+        userAnswer,
+        correctAnswer: q.correctAnswer || q.answer || null,
+        explanation: q.explanation || null,
+      };
+    }
+
+    // Update skill ONCE per session if any correct answers
+    let skillProgress = { improved: false, created: false, delta: 0, skillName: session.topic };
+    if (correctCount > 0 && session.topic) {
+      try {
+        const progression = await updateSkillConfidence(
+          req.user._id,
+          session.topic,
+          session.difficulty || "Medium",
+          { category: "Technical" }
+        );
+        skillProgress = {
+          improved: progression.improved,
+          created: progression.created,
+          delta: progression.delta,
+          oldConfidence: progression.oldConfidence,
+          newConfidence: progression.newConfidence,
+          skillName: session.topic,
+        };
+      } catch (e) {
+        console.warn("[AI] Skill update failed (non-fatal):", e.message);
+      }
+    }
+
+    try { await recordUserActivity(req.user._id, "question_answered", null); } catch { /* non-fatal */ }
+
+    return sendSuccess(res, {
+      results,
+      correctCount,
+      total: Object.keys(results).length,
+      skillProgress,
+    }, "All answers evaluated successfully", 200);
+  } catch (error) {
+    console.error("[AI] evaluateAllAnswers failed:", error.message);
+    return sendError(res, "Failed to evaluate answers", 500);
   }
 };
