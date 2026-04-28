@@ -29,7 +29,7 @@ app.use("/api/streak", require("./routes/streakRoutes"));
 app.use("/api/leaderboard", require("./routes/leaderboardRoutes"));
 app.use("/api/readiness", require("./routes/readinessRoutes"));
 app.use("/api/resume", require("./routes/resumeRoutes"));
-app.use("/api/questions", require("./routes/questionRoutes"));
+
 app.use("/api/topics", require("./routes/topicRoutes"));
 
 // Future recruiter module wiring (feature-flagged; disabled by default).

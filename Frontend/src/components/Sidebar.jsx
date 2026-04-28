@@ -22,7 +22,6 @@ const navItems = [
   { label: 'Dashboard',  to: '/dashboard',   icon: Home           },
   { label: 'Skills',     to: '/skills',      icon: Gauge          },
   { label: 'Tasks',      to: '/tasks',       icon: CheckSquare    },
-  { label: 'Interview Practice', to: '/practice', icon: Target         },
   { label: 'AI Practice',to: '/ai-practice', icon: Brain          },
   { label: 'Resume',     to: '/resume',      icon: ShieldUser     },
   { label: 'Analytics',  to: '/analytics',   icon: BarChart3      },

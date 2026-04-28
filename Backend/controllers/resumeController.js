@@ -11,6 +11,7 @@ const {
   generatePDF
 } = require("../services/aiResumeService");
 const { analyzeResumeText } = require("../services/atsAnalyzerService");
+const { analyzeResumeWithAI } = require("../services/aiService");
 
 const { sendSuccess, sendError } = require("../utils/responseHandler");
 const ATS_THRESHOLD = 70;
@@ -218,6 +219,7 @@ const createAnalysisRecord = async ({ userId, resumeId = null, sourceType, resum
     atsScore: analysis.score,
     scoreBreakdown: analysis.scoreBreakdown,
     suggestions: analysis.suggestions,
+    aiFeedback: analysis.aiFeedback || [],
     sectionsStatus: analysis.sectionsStatus,
     sectionWarnings: analysis.sectionWarnings,
     pitfalls: analysis.pitfalls,
@@ -472,7 +474,20 @@ exports.analyzeResumeATS = async (req, res) => {
     }
 
     const extracted = await extractResumeTextFromRequest(req);
-    const analysis = analyzeResumeText(extracted.text, jobDescription, { threshold: ATS_THRESHOLD });
+    const ruleBasedAnalysis = analyzeResumeText(extracted.text, jobDescription, { threshold: ATS_THRESHOLD });
+
+    logResumeDebug("Starting AI ATS Analysis", "...");
+    const aiAnalysis = await analyzeResumeWithAI(extracted.text, jobDescription);
+    logResumeDebug("Completed AI ATS Analysis", "...");
+
+    // Merge AI insights with deterministic scoring
+    const analysis = {
+      ...ruleBasedAnalysis,
+      suggestions: [...new Set([...ruleBasedAnalysis.suggestions, ...(aiAnalysis.suggestions || [])])],
+      missingKeywords: [...new Set([...ruleBasedAnalysis.missingKeywords, ...(aiAnalysis.missingKeywords || [])])],
+      aiFeedback: aiAnalysis.aiFeedback || [],
+      weakAreas: aiAnalysis.weakAreas || [],
+    };
 
     logResumeDebug("Resume text", extracted.text);
     logResumeDebug("Job Description", jobDescription);
@@ -510,5 +525,40 @@ exports.analyzeResumeATS = async (req, res) => {
     if (req.file?.path) {
       fs.unlink(req.file.path).catch(() => undefined);
     }
+  }
+};
+
+// GET /api/resume/history
+exports.getAtsHistory = async (req, res) => {
+  try {
+    const history = await ATSReport.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .select("createdAt jobDescription atsScore keywordMatchPercentage readyBadge")
+      .lean();
+
+    return sendSuccess(res, history, "ATS history retrieved", 200);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+// GET /api/resume/history/:id
+exports.getAtsHistoryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return sendError(res, "Invalid history id", 400);
+    }
+
+    const report = await ATSReport.findOne({ _id: id, userId: req.user._id }).lean();
+
+    if (!report) {
+      return sendError(res, "History report not found", 404);
+    }
+
+    return sendSuccess(res, report, "History report retrieved", 200);
+  } catch (error) {
+    return handleError(res, error);
   }
 };

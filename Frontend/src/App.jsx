@@ -11,7 +11,6 @@ import Tasks from './pages/Tasks'
 import { getAuthToken } from './services/api'
 
 import Landing from './pages/Landing'
-import Practice from './pages/Practice'
 import ResumeStudio from './pages/ResumeStudio'
 import AboutUs from './pages/AboutUs'
 import Careers from './pages/Careers'
@@ -68,7 +67,6 @@ function App() {
         <Route path="/skills" element={<ProtectedRoute><Skills /></ProtectedRoute>} />
         <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
         <Route path="/ai-practice" element={<ProtectedRoute><AIPractice /></ProtectedRoute>} />
-        <Route path="/practice" element={<ProtectedRoute><Practice /></ProtectedRoute>} />
         <Route path="/resume/*" element={<ProtectedRoute><ResumeStudio /></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/streak" element={<ProtectedRoute><StreakDashboard /></ProtectedRoute>} />

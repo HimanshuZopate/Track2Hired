@@ -29,6 +29,17 @@ const escapeRegex = (v) => String(v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     AI_PROVIDER:    process.env.AI_PROVIDER    || '(default: cascade)',
   };
   console.log('[AI] Provider keys at startup:', keys);
+  
+  // Validate API key formats
+  if (process.env.GROK_API_KEY && process.env.GROK_API_KEY.startsWith('gsk_')) {
+    console.warn('[AI] WARNING: GROK_API_KEY contains a Groq key (starts with "gsk_"). xAI Grok keys should start with "xai-". This will cause the Grok provider to redirect to Groq, wasting a cascade slot.');
+  }
+  if (process.env.GROQ_API_KEY && !process.env.GROQ_API_KEY.startsWith('gsk_')) {
+    console.warn('[AI] WARNING: GROQ_API_KEY does not start with "gsk_". Groq API keys should start with "gsk_". Please verify your key.');
+  }
+  if (process.env.GROK_API_KEY && !process.env.GROK_API_KEY.startsWith('xai-') && !process.env.GROK_API_KEY.startsWith('gsk_')) {
+    console.warn('[AI] WARNING: GROK_API_KEY format is unexpected. xAI Grok keys should start with "xai-".');
+  }
 })();
 
 // ─── Retry helpers ────────────────────────────────────────────────────────────
@@ -352,7 +363,7 @@ const buildFallbackQuestions = ({ skill, difficulty, type, count }) => {
 // ─── 1. Groq (api.groq.com — OpenAI-compatible, key starts with gsk_) ──────────
 const callGroq = async (prompt) => {
   const apiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY;
-  if (!apiKey || !apiKey.startsWith('gsk_')) throw Object.assign(new Error('GROQ_API_KEY not configured or not a gsk_ key'), { _noKey: true });
+  if (!apiKey || !apiKey.startsWith('gsk_')) throw Object.assign(new Error('GROQ_API_KEY not configured or invalid format. Add GROQ_API_KEY=gsk_... to Backend/.env file. Groq keys start with "gsk_".'), { _noKey: true });
 
   const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
   const response = await axios.post(
@@ -377,7 +388,14 @@ const callGroq = async (prompt) => {
 // ─── 2. Grok (xAI) ───────────────────────────────────────────────────────────
 const callGrok = async (prompt) => {
   const apiKey = process.env.GROK_API_KEY;
-  if (!apiKey) throw Object.assign(new Error("GROK_API_KEY not configured"), { _noKey: true });
+  if (!apiKey) throw Object.assign(new Error("GROK_API_KEY not configured. Add GROK_API_KEY=xai-... to Backend/.env file if using xAI Grok provider. xAI keys start with 'xai-'."), { _noKey: true });
+  
+  // If the key starts with gsk_, it's actually a Groq key.
+  // xAI (Grok) keys typically start with 'xai-'
+  if (apiKey.startsWith('gsk_')) {
+    console.warn("[AI] WARNING: GROK_API_KEY contains a Groq key (starts with 'gsk_'). xAI Grok keys should start with 'xai-'. Redirecting to Groq caller. To fix: Remove GROK_API_KEY from .env or replace with a valid xAI key.");
+    return callGroq(prompt);
+  }
 
   const model = process.env.GROK_MODEL || "grok-3-mini";
   const response = await axios.post(
@@ -402,7 +420,7 @@ const callGrok = async (prompt) => {
 // ─── 2. OpenAI ────────────────────────────────────────────────────────────────
 const callOpenAI = async (prompt) => {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw Object.assign(new Error("OPENAI_API_KEY not configured"), { _noKey: true });
+  if (!apiKey) throw Object.assign(new Error("OPENAI_API_KEY not configured. Add OPENAI_API_KEY=sk-... to Backend/.env file."), { _noKey: true });
 
   const model = process.env.OPENAI_MODEL || "gpt-3.5-turbo";
   const response = await axios.post(
@@ -427,7 +445,7 @@ const callOpenAI = async (prompt) => {
 // ─── 3. Gemini ────────────────────────────────────────────────────────────────
 const callGemini = async (prompt) => {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw Object.assign(new Error("GEMINI_API_KEY not configured"), { _noKey: true });
+  if (!apiKey) throw Object.assign(new Error("GEMINI_API_KEY not configured. Add GEMINI_API_KEY=... to Backend/.env file."), { _noKey: true });
 
   const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -473,17 +491,30 @@ const callWithRetry = async (callerFn, prompt) => {
 // MULTI-PROVIDER CASCADE: Grok → OpenAI → Gemini → Fallback
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const PROVIDER_CHAIN = [
-  { name: 'groq',   caller: callGroq   },
-  { name: 'grok',   caller: callGrok   },
-  { name: 'openai', caller: callOpenAI },
-  { name: 'gemini', caller: callGemini },
+const BASE_PROVIDER_CHAIN = [
+  { name: "groq", caller: callGroq },
+  { name: "grok", caller: callGrok },
+  { name: "openai", caller: callOpenAI },
+  { name: "gemini", caller: callGemini },
 ];
+
+const getProviderChain = () => {
+  const preferred = (process.env.AI_PROVIDER || "groq").toLowerCase();
+  const chain = [...BASE_PROVIDER_CHAIN];
+  const index = chain.findIndex((p) => p.name === preferred);
+
+  if (index > 0) {
+    const [p] = chain.splice(index, 1);
+    chain.unshift(p);
+  }
+  return chain;
+};
 
 const tryProviderChain = async (prompt, { skill, type }) => {
   const errors = [];
+  const providers = getProviderChain();
 
-  for (const { name, caller } of PROVIDER_CHAIN) {
+  for (const { name, caller } of providers) {
     try {
       console.log(`[AI] Trying provider: ${name}`);
       const rawText = await callWithRetry(caller, prompt);
@@ -523,10 +554,12 @@ const tryProviderChain = async (prompt, { skill, type }) => {
         const lc = String(msg).toLowerCase();
         if (lc.includes("credit") || lc.includes("license") || lc.includes("billing")) {
           console.error(`[AI] ✗ ${name}: No credits/license (HTTP 403). Cascading to next provider.`);
+          console.error(`[AI] To fix: Check ${name.toUpperCase()}_API_KEY in Backend/.env. Verify the key is valid and has available credits/quota.`);
           errors.push({ provider: name, error: `No credits/license: ${msg}`, status: 403 });
           continue;
         }
         console.error(`[AI] ✗ ${name}: Forbidden (403): ${msg}. Cascading.`);
+        console.error(`[AI] To fix: Check ${name.toUpperCase()}_API_KEY in Backend/.env. Verify the key is valid and has available credits/quota.`);
         errors.push({ provider: name, error: `Forbidden: ${msg}`, status: 403 });
         continue;
       }
@@ -534,6 +567,7 @@ const tryProviderChain = async (prompt, { skill, type }) => {
       // 401 — bad key
       if (status === 401) {
         console.error(`[AI] ✗ ${name}: Invalid API key (401). Cascading.`);
+        console.error(`[AI] To fix: Check ${name.toUpperCase()}_API_KEY in Backend/.env. Ensure the key is valid and not expired.`);
         errors.push({ provider: name, error: "Invalid API key", status: 401 });
         continue;
       }
@@ -541,6 +575,7 @@ const tryProviderChain = async (prompt, { skill, type }) => {
       // Missing key — skip silently to next
       if (error._noKey) {
         console.log(`[AI] ✗ ${name}: No API key configured. Skipping.`);
+        console.log(`[AI] To fix: Add ${name.toUpperCase()}_API_KEY to Backend/.env file.`);
         errors.push({ provider: name, error: "API key not configured" });
         continue;
       }
@@ -646,6 +681,8 @@ const generateQuestions = async ({ userId, skill, difficulty, type, count = 5 })
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Difficulty alias map (Easy/Medium/Hard ↔ Beginner/Intermediate/Advanced)
+
+
 const DIFFICULTY_FORWARD = {
   Easy: "Beginner", Medium: "Intermediate", Hard: "Advanced",
   Beginner: "Beginner", Intermediate: "Intermediate", Advanced: "Advanced",
@@ -723,7 +760,7 @@ const generateMcqQuestions = async ({ userId, skill, difficulty, count = 5 }) =>
   const prompt = buildMcqPrompt({ skill, difficulty: normalDiff, count: finalCount });
 
   // Try each provider
-  for (const provider of PROVIDER_CHAIN) {
+  for (const provider of BASE_PROVIDER_CHAIN) {
     try {
       console.log(`[AI-MCQ] Trying provider: ${provider.name}`);
       const raw = await provider.caller(prompt);

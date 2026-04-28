@@ -149,9 +149,11 @@ const resumeAnalyzeValidator = [
 ];
 
 const aiGenerateValidator = [
-  body("topic").optional().trim(),
   body("skill").optional().trim(),
-  body("difficulty").optional().isIn(["Beginner", "Intermediate", "Advanced", "Easy", "Medium", "Hard"]).withMessage("Invalid difficulty level")
+  body("topic").optional().trim(),
+  body("difficulty").optional().trim(),
+  body("type").optional().trim(),
+  body("count").optional().isInt({ min: 1, max: 20 })
 ];
 
 const aiAnswerValidator = [

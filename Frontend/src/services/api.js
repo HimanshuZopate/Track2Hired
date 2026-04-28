@@ -87,8 +87,9 @@ export const dashboardApi = {
   getAnalyticsSuggestions:() => api.get('/api/analytics/suggestions'),
   getSuggestions:         () => api.get('/api/suggestions'),
   getTodaySuggestion:     () => api.get('/api/suggestions/today'),
+  getAiSuggestions:       () => api.get('/api/suggestions/ai'),
   getTrends:              () => api.get('/api/analytics/trends'),
-  getStreakHistory:        () => api.get('/api/streak/history'),
+  getStreakHistory:       () => api.get('/api/streak/history'),
 }
 
 // ─── Practice API shortcuts (DB Driven) ───────────────────────────────────────
@@ -108,6 +109,8 @@ export const resumeApi = {
   generateResume: (data) => api.post('/api/resume/generate', data),
   analyzeResume: (data, config = {}) => api.post('/api/resume/analyze', data, config),
   downloadResume: (id) => api.get(`/api/resume/download/${id}`),
+  getHistory: () => api.get('/api/resume/history'),
+  getHistoryById: (id) => api.get(`/api/resume/history/${id}`),
 }
 
 // ─── Request interceptor — attach Bearer token ────────────────────────────────
