@@ -161,6 +161,17 @@ const aiAnswerValidator = [
   body("userAnswer").trim().notEmpty().withMessage("userAnswer is required")
 ];
 
+const evaluateAllValidator = [
+  body("sessionId").trim().notEmpty().withMessage("sessionId is required"),
+  body("answers").isObject().withMessage("answers must be an object")
+];
+
+const attemptValidator = [
+  body("questionId").trim().notEmpty().withMessage("questionId is required"),
+  body("userAnswer").exists().withMessage("userAnswer is required"),
+  body("isCorrect").isBoolean().withMessage("isCorrect must be a boolean")
+];
+
 module.exports = {
   registerValidator,
   loginValidator,
@@ -175,5 +186,7 @@ module.exports = {
   recruiterRegisterValidator,
   recruiterLoginValidator,
   aiGenerateValidator,
-  aiAnswerValidator
+  aiAnswerValidator,
+  evaluateAllValidator,
+  attemptValidator
 };

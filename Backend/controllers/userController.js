@@ -7,6 +7,8 @@ const { sendSuccess, sendError } = require("../utils/responseHandler");
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    // SECURITY: Never trust client-supplied role — always default to "student"
+    const role = "student";
 
     if (!name || !email || !password) {
       return sendError(res, "All fields are required", 400);

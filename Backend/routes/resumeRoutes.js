@@ -16,17 +16,32 @@ const {
   saveResumeProfile,
   generateResume,
   downloadResume,
-  analyzeResumeATS
+  analyzeResumeATS,
+  getAtsHistory,
+  getAtsHistoryById
 } = require("../controllers/resumeController");
 
 const uploadsDir = path.join(__dirname, "..", "uploads");
 fs.mkdirSync(uploadsDir, { recursive: true });
 
+// SECURITY: Only accept PDF and plain text files for resume analysis
+const fileFilter = (req, file, cb) => {
+  const allowedMimes = ["application/pdf", "text/plain"];
+  const allowedExts = [".pdf", ".txt"];
+  const ext = path.extname(file.originalname || "").toLowerCase();
+
+  if (allowedMimes.includes(file.mimetype) || allowedExts.includes(ext)) {
+    return cb(null, true);
+  }
+  return cb(new Error("Only PDF and TXT files are accepted for resume analysis"), false);
+};
+
 const upload = multer({
   dest: uploadsDir,
   limits: {
-    fileSize: 5 * 1024 * 1024
-  }
+    fileSize: 5 * 1024 * 1024   // 5MB max
+  },
+  fileFilter
 });
 
 const normalizeUploadedResume = (req, res, next) => {
@@ -53,5 +68,9 @@ router.post(
   analyzeResumeATS
 );
 router.get("/download/:id", downloadResume);
+
+// ATS history routes (were defined in controller but never mounted)
+router.get("/history", getAtsHistory);
+router.get("/history/:id", getAtsHistoryById);
 
 module.exports = router;

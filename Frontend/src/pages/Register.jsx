@@ -32,7 +32,6 @@ function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'student',
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -85,7 +84,6 @@ function Register() {
         name: form.name.trim(),
         email: form.email.trim(),
         password: form.password,
-        role: form.role,
       })
 
       const token = response?.data?.token
@@ -203,7 +201,7 @@ function Register() {
               }
             />
 
-            <input type="hidden" name="role" value={form.role} />
+
 
             <AnimatePresence>
               {error ? (

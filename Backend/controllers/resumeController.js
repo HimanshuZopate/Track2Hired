@@ -73,6 +73,7 @@ const toStringArray = (value) => {
 };
 
 const logResumeDebug = (label, payload) => {
+  if (process.env.NODE_ENV === "production") return;
   // eslint-disable-next-line no-console
   console.log(`[ResumeDebug] ${label}:`, payload);
 };

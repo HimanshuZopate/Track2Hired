@@ -19,6 +19,7 @@ const { sendSuccess, sendError } = require("../utils/responseHandler");
 // Stores full question objects (with correctAnswer/answer/keywords) — NEVER sent to client
 const _sessionCache = new Map();
 const SESSION_TTL_MS = 30 * 60 * 1000;
+const SESSION_CACHE_MAX = 1000;  // Prevent unbounded memory growth
 
 function makeSessionId() {
   return typeof crypto.randomUUID === "function"
@@ -109,6 +110,13 @@ exports.generateAiQuestions = async (req, res) => {
 
     // ── Cache full questions (with correctAnswer/answer) server-side ──────
     const sessionId = makeSessionId();
+
+    // Evict oldest if cache is full
+    if (_sessionCache.size >= SESSION_CACHE_MAX) {
+      const oldestKey = _sessionCache.keys().next().value;
+      _sessionCache.delete(oldestKey);
+    }
+
     _sessionCache.set(sessionId, {
       questions: result.questions,
       topic: resolvedTopic,
