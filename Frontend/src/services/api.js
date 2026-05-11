@@ -7,7 +7,7 @@ const AUTH_TOKEN_KEY = 'track2hired_token'
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
-  baseURL: '/',
+  baseURL: import.meta.env.VITE_API_URL || '/',
   timeout: 15000,
 })
 
