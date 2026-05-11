@@ -4,7 +4,7 @@ const dotenv = require("dotenv");
 const path = require("path");
 const helmet = require("helmet");
 const compression = require("compression");
-const rateLimit = require("express-rate-limit");
+
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
 const { migrateLegacyReadinessScale } = require("./services/readinessService");
 
@@ -41,43 +41,14 @@ app.use(cors({
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
-// ─── Rate Limiting ────────────────────────────────────────────────────────────
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,   // 15 minutes
-  max: 200,                     // 200 requests per window
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, data: null, message: "Too many requests. Please try again later." },
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 15,                      // 15 auth attempts per 15 minutes
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, data: null, message: "Too many login attempts. Please try again later." },
-});
-
-const aiLimiter = rateLimit({
-  windowMs: 60 * 1000,          // 1 minute
-  max: 15,                      // 15 AI calls per minute
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, data: null, message: "AI rate limit reached. Please wait a moment." },
-});
-
-app.use("/api/", generalLimiter);
-
 //Test Route
 app.get("/", (req, res) => {
   res.send("Track2Hired API Running");
 });
 
-// Auth routes with stricter rate limiting
-app.use("/api/users", authLimiter, require("./routes/userRoutes"));
-
-// AI routes with AI-specific rate limiting
-app.use("/api/ai", aiLimiter, require("./routes/aiRoutes"));
+// ─── Routes ───────────────────────────────────────────────────────────────────
+app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/ai", require("./routes/aiRoutes"));
 
 // Standard protected routes
 app.use("/api/skills", require("./routes/skillRoutes"));

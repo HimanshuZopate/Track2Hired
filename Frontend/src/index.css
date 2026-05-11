@@ -335,7 +335,7 @@ body {
 
 .mission-main-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(330px, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
   gap: 1rem;
 }
 
@@ -706,26 +706,127 @@ body {
 }
 
 @media (max-width: 768px) {
-  .mission-shell {
-    padding: 0.9rem 0.75rem 5.5rem;
+  .mission-dashboard {
+    overflow-x: hidden;
   }
 
+  .mission-shell {
+    padding: 0.75rem 0.6rem 6rem;
+    gap: 0.75rem;
+  }
+
+  /* ── Status Bar — stack all zones vertically ────────────────────────── */
+  .mission-status-bar {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: 16px;
+  }
+
+  .status-separator {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.5) 50%, transparent 100%);
+  }
+
+  .status-zone h1 {
+    font-size: 1.15rem;
+  }
+
+  .status-zone.compact.readiness {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .status-ring-wrap {
+    width: 70px;
+    height: 70px;
+  }
+
+  /* ── Main grid — single column ──────────────────────────────────────── */
+  .mission-main-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* ── Progress grid — stack radar + consistency vertically ───────────── */
   .progress-grid {
     grid-template-columns: 1fr;
   }
 
-  .progress-block.timeline,
+  .progress-block.timeline {
+    grid-column: span 1;
+  }
+
+  /* ── Panels — tighter padding on mobile ─────────────────────────────── */
+  .mission-panel {
+    border-radius: 14px;
+    padding: 0.75rem;
+  }
+
+  /* ── Insight strip — single column ──────────────────────────────────── */
+  .mission-insight-strip {
+    grid-template-columns: 1fr;
+    padding: 0.7rem;
+    border-radius: 14px;
+  }
+
   .insight-block.ticker {
     grid-column: span 1;
   }
 
-  .mission-insight-strip {
-    grid-template-columns: 1fr;
+  /* ── Action blocks — full width touch targets ───────────────────────── */
+  .action-block {
+    padding: 0.7rem;
   }
 
-  .status-zone.readiness {
-    justify-content: flex-start;
-    gap: 0.9rem;
+  .mission-btn {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.82rem;
+    min-height: 42px;
+  }
+
+  /* ── Typography & spacing tighten ───────────────────────────────────── */
+  .panel-title-row h3 {
+    font-size: 0.95rem;
+  }
+
+  .action-title-row h4 {
+    font-size: 0.88rem;
+  }
+
+  .block-title {
+    font-size: 0.78rem;
+  }
+
+  .timeline-list p {
+    font-size: 0.82rem;
+  }
+
+  .weak-list li {
+    font-size: 0.8rem;
+  }
+
+  /* ── Prevent any fixed-width child from causing overflow ────────────── */
+  .mission-panel,
+  .mission-insight-strip,
+  .progress-block,
+  .action-block,
+  .insight-block {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* Status bar needs visible overflow so the readiness ring is not clipped */
+  .mission-status-bar {
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  /* ── Charts — responsive sizing ─────────────────────────────────────── */
+  .insight-block.trend .h-\\[170px\\] {
+    height: 140px;
   }
 }
 

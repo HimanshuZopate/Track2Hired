@@ -12,7 +12,7 @@ function ReadinessRing({ value = 0 }) {
 
   return (
     <div className="status-ring-wrap">
-      <svg width={size} height={size} className="-rotate-90">
+      <svg viewBox={`0 0 ${size} ${size}`} width="100%" height="100%" className="-rotate-90">
         <circle
           cx={size / 2}
           cy={size / 2}
