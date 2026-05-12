@@ -73,27 +73,17 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 const connectDB = require("./config/db");
+
+console.log("Attempting to connect to MongoDB...");
 connectDB()
   .then(async () => {
     await migrateLegacyReadinessScale();
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || "production"}]`);
+    });
   })
   .catch((error) => {
-    // eslint-disable-next-line no-console
-    console.error("Startup initialization failed:", error.message);
+    console.error("CRITICAL: Startup initialization failed!");
+    console.error("Error Message:", error.message);
     process.exit(1);
   });
-
-process.on("unhandledRejection", (reason) => {
-  // eslint-disable-next-line no-console
-  console.error("Unhandled Rejection:", reason);
-});
-
-process.on("uncaughtException", (error) => {
-  // eslint-disable-next-line no-console
-  console.error("Uncaught Exception:", error);
-  process.exit(1);
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || "development"}]`);
-});
